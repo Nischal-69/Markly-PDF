@@ -1,0 +1,241 @@
+/* Markly PDF — global tokens + base. Windows productivity-app look:
+   Segoe UI type, flat surfaces, hairline borders, single brand accent. */
+
+:root {
+  --accent: #0f6cbd;
+  --accent-hover: #115ea3;
+  --accent-pressed: #0c5aa0;
+  --accent-soft: rgba(15, 108, 189, 0.1);
+
+  --text: #1b1a19;
+  --text-sub: #605e5c;
+  --text-faint: #8a8886;
+
+  --surface: #ffffff;
+  --surface-sub: #faf9f8;
+  --viewer-bg: #e6e8ec;
+  --thumb-bg: #f3f2f1;
+
+  --border: #edebe9;
+  --border-strong: #e1dfdd;
+
+  --danger: #d13438;
+  --danger-soft: #fdecea;
+
+  --shadow-page: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 1px rgba(0, 0, 0, 0.12);
+
+  --radius: 6px;
+  --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface-sub);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- shared buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-sub);
+  border-color: #c8c6c4;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-pressed);
+}
+
+.btn-large {
+  height: 38px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+.btn-icon {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.btn-icon.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: transparent;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-sub);
+  height: 28px;
+  padding: 0 8px;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: transparent;
+  color: var(--text);
+}
+
+/* ---------- app frame ---------- */
+
+.app {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* ---------- error banner ---------- */
+
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--danger-soft);
+  border-bottom: 1px solid #f5c6c2;
+  color: #61100f;
+}
+
+.error-banner > svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--danger);
+}
+
+.error-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.error-details {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.error-details summary {
+  cursor: pointer;
+  color: #8a1c1a;
+}
+
+.error-details code {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #f5c6c2;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+}
+
+/* ---------- misc ---------- */
+
+.muted {
+  color: var(--text-sub);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(15, 108, 189, 0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: markly-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes markly-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

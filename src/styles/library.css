@@ -1,0 +1,186 @@
+/* Markly PDF — library screens (home / recent / placeholders). */
+
+.library-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--surface-sub);
+  padding: 36px 32px 64px;
+}
+
+.library-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.home-hero {
+  max-width: 560px;
+  margin: 4vh auto 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-hero h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.home-sub {
+  color: var(--text-sub);
+  line-height: 1.55;
+  max-width: 440px;
+  margin-bottom: 8px;
+}
+
+.home-recent {
+  max-width: 640px;
+  margin: 34px auto 0;
+}
+
+/* ---------- recent list ---------- */
+
+.recent-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 6px 10px;
+}
+
+.recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+}
+
+.recent-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.recent-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius);
+}
+
+.recent-row:hover {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+.recent-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius);
+}
+
+.recent-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.recent-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-meta {
+  font-size: 12px;
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-empty {
+  padding: 34px 20px;
+  text-align: center;
+  color: var(--text-sub);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+/* ---------- coming soon ---------- */
+
+.coming-soon {
+  max-width: 480px;
+  margin: 10vh auto 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.coming-soon h1 {
+  font-size: 22px;
+}
+
+.coming-soon p {
+  color: var(--text-sub);
+  line-height: 1.55;
+}
+
+.coming-soon-icon {
+  width: 60px;
+  height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.soon-chip-large {
+  font-size: 11px;
+  padding: 4px 12px;
+  margin-top: 4px;
+}

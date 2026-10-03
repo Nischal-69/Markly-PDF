@@ -1,0 +1,179 @@
+/* Markly PDF — viewer surface, pages, text layer, thumbnails. */
+
+.viewer-area {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pdf-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: var(--viewer-bg);
+  padding: 24px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  outline: none;
+}
+
+.pdf-page-slot {
+  display: flex;
+  justify-content: center;
+}
+
+/* One page: canvas + stacked layers share the exact same box. */
+.pdf-page {
+  position: relative;
+  background: #fff;
+  box-shadow: var(--shadow-page);
+}
+
+.pdf-canvas {
+  display: block;
+}
+
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.pdf-text-layer span {
+  position: absolute;
+  transform-origin: 0% 0%;
+  white-space: pre;
+  line-height: 1;
+  color: transparent;
+  cursor: text;
+}
+
+.pdf-text-layer br {
+  user-select: none;
+}
+
+.pdf-text-layer span::selection {
+  background: rgba(15, 108, 189, 0.28);
+  color: transparent;
+}
+
+/* Batch 2 mount point: absolutely stacked above text, below nothing yet. */
+.pdf-annotation-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pdf-page-skeleton {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+}
+
+.pdf-page-error {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 8px 12px;
+  background: var(--danger-soft);
+  color: #61100f;
+  font-size: 12px;
+}
+
+.pdf-endmark {
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 8px 0 4px;
+}
+
+.viewer-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15vh;
+  padding: 14px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+/* ---------- thumbnails ---------- */
+
+.thumb-panel {
+  width: 152px;
+  flex: none;
+  background: var(--thumb-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  min-height: 0;
+}
+
+.thumb-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.thumb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 6px 5px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+}
+
+.thumb-item:hover {
+  background: rgba(0, 0, 0, 0.045);
+}
+
+.thumb-item.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.thumb-canvas-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 60px;
+  background: #fff;
+  box-shadow: var(--shadow-page);
+  display: flex;
+}
+
+.thumb-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.thumb-skeleton {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+}
+
+.thumb-label {
+  font-size: 11px;
+  color: var(--text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.thumb-item.is-active .thumb-label {
+  color: var(--accent);
+  font-weight: 600;
+}

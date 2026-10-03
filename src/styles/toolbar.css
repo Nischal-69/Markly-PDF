@@ -1,0 +1,99 @@
+/* Markly PDF — top toolbar. */
+
+.toolbar {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolbar-center {
+  margin: 0 auto;
+}
+
+.toolbar-doc {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 320px;
+  padding: 0 4px 0 10px;
+  border-left: 1px solid var(--border);
+  color: var(--text-sub);
+}
+
+.toolbar-doc-name {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-box {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+}
+
+.page-input {
+  width: 44px;
+  height: 28px;
+  text-align: center;
+  font: inherit;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.page-input:disabled {
+  background: var(--surface-sub);
+  color: var(--text-faint);
+}
+
+.page-total {
+  color: var(--text-sub);
+  white-space: nowrap;
+  min-width: 34px;
+}
+
+.zoom-label {
+  min-width: 52px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.zoom-label:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.zoom-label:disabled {
+  cursor: default;
+  color: var(--text-faint);
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border-strong);
+  margin: 0 2px;
+}
