@@ -5,7 +5,7 @@ import { usePdfStore, type SidebarView } from "@/state/pdfStore";
 const NAV: Array<{ id: SidebarView; label: string; icon: IconName; soon?: boolean }> = [
   { id: "home", label: "Home", icon: "home" },
   { id: "recent", label: "Recent", icon: "recent" },
-  { id: "notes", label: "Notes", icon: "note", soon: true },
+  { id: "notes", label: "Notes", icon: "note" },
   { id: "bookmarks", label: "Bookmarks", icon: "bookmark", soon: true },
 ];
 

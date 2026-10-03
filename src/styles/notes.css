@@ -1,0 +1,352 @@
+/* Markly PDF — PDF notes: pins, editor dialog, popup, panel. */
+
+/* --- indicator pins (annotation layer owns these; PDF text untouched) --- */
+
+.pdf-annotation-layer .note-pin {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid #b96a00;
+  border-radius: 11px;
+  background: #fff7e6;
+  color: #8a4d00;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  pointer-events: auto;
+  /* Offset keeps the pin beside the anchor, never over the text. */
+  transform: translate(2px, -50%);
+}
+
+.note-pin:hover {
+  background: #ffefc2;
+  border-color: #8a4d00;
+}
+
+.note-pin.is-open {
+  background: #0f6cbd;
+  border-color: #0f6cbd;
+  color: #fff;
+}
+
+.note-pin.is-focused {
+  outline: 2px solid #0f6cbd;
+  outline-offset: 2px;
+  animation: note-pulse 1.2s ease-in-out 2;
+}
+
+@keyframes note-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(15, 108, 189, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(15, 108, 189, 0); }
+}
+
+.note-pin-page {
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* --- editor dialog --- */
+
+.note-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 16px 16px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.note-dialog {
+  width: min(480px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.note-dialog-head h2 {
+  font-size: 15px;
+}
+
+.note-dialog-context {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.note-quote {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: var(--text-sub);
+  font-style: italic;
+  line-height: 1.5;
+  max-height: 84px;
+  overflow: hidden;
+}
+
+.note-quote.small {
+  max-height: 60px;
+}
+
+.note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.note-field input,
+.note-field textarea {
+  font: inherit;
+  font-weight: 400;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface);
+  resize: vertical;
+}
+
+.note-field input:focus,
+.note-field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+.note-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.note-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* --- viewer popup --- */
+
+.note-popup {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 70;
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 120px));
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.note-popup-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.note-kind {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-size: 10px;
+}
+
+.note-popup-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.note-popup-content {
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+.note-popup-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.note-popup-foot .small,
+.muted.small {
+  font-size: 11px;
+}
+
+.note-popup-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.btn-danger {
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: #f5c6c2;
+}
+
+/* --- notes panel --- */
+
+.notes-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notes-head h2 {
+  font-size: 15px;
+}
+
+.notes-search {
+  width: 200px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+}
+
+.notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.note-row:hover {
+  border-color: #c8c6c4;
+}
+
+.note-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius);
+}
+
+.note-row-title {
+  font-weight: 700;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.note-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-sub);
+  max-width: 100%;
+}
+
+.note-row-doc {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-row-preview {
+  font-size: 12px;
+  color: var(--text-sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.note-row-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+}
+
+.note-row-opening {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 11px;
+  color: var(--accent);
+}

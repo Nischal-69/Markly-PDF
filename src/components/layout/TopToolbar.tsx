@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { openPdfFromDisk, saveCurrentPdfCopy } from "@/lib/files/fileHandling";
+import { currentDocId } from "@/lib/annotations/docId";
 import { MAX_SCALE, MIN_SCALE, usePdfStore } from "@/state/pdfStore";
+import { useNoteUi } from "@/state/noteUi";
 
 function formatZoom(scale: number): string {
   return `${Math.round(scale * 100)}%`;
@@ -217,6 +219,32 @@ export function TopToolbar() {
         </button>
 
         <span className="toolbar-sep" />
+
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={() => {
+            const docId = currentDocId();
+            if (!docId) return;
+            const s = usePdfStore.getState();
+            useNoteUi.getState().startNew({
+              docId,
+              docName: s.fileName ?? "Document",
+              page: s.currentPage,
+              kind: "page",
+              selectedText: "",
+              // (0,0) = page corner anchor; the pin renders top-right and
+              // never covers text.
+              x: 0,
+              y: 0,
+            });
+          }}
+          disabled={!inViewer}
+          title="Add a page note to the current page"
+          aria-label="Add page note"
+        >
+          <Icon name="note" size={15} />
+        </button>
 
         <button
           type="button"

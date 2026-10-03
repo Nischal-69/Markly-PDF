@@ -5,11 +5,15 @@ import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { Toast } from "@/components/common/Toast";
 import { HighlightEditor } from "@/components/annotations/HighlightEditor";
 import { SelectionToolbar } from "@/components/annotations/SelectionToolbar";
+import { NoteEditor } from "@/components/notes/NoteEditor";
+import { NotePopup } from "@/components/notes/NoteLayer";
+import { NotesPanel } from "@/components/notes/NotesPanel";
 import { HomeScreen } from "@/components/library/HomeScreen";
 import { RecentScreen } from "@/components/library/RecentScreen";
 import { ComingSoon } from "@/components/library/ComingSoon";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { usePdfStore } from "@/state/pdfStore";
+import { useNoteStore } from "@/state/noteStore";
 
 function LibraryScreen() {
   const sidebarView = usePdfStore((s) => s.sidebarView);
@@ -18,13 +22,7 @@ function LibraryScreen() {
     case "recent":
       return <RecentScreen />;
     case "notes":
-      return (
-        <ComingSoon
-          icon="note"
-          title="Notes"
-          description="All your PDF notes and highlights will live here, organized and searchable — stored locally on your device."
-        />
-      );
+      return <NotesPanel />;
     case "bookmarks":
       return (
         <ComingSoon
@@ -42,10 +40,12 @@ function LibraryScreen() {
 export default function App() {
   const screen = usePdfStore((s) => s.screen);
   const refreshRecent = usePdfStore((s) => s.refreshRecent);
+  const refreshNotes = useNoteStore((s) => s.refresh);
 
   useEffect(() => {
     refreshRecent();
-  }, [refreshRecent]);
+    void refreshNotes();
+  }, [refreshRecent, refreshNotes]);
 
   return (
     <div className="app">
@@ -58,6 +58,8 @@ export default function App() {
         </main>
         <SelectionToolbar />
         <HighlightEditor />
+        <NoteEditor />
+        <NotePopup />
         <Toast />
       </div>
     </div>

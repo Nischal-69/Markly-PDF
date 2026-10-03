@@ -10,6 +10,7 @@ import { saveCurrentPdfCopy } from "@/lib/files/fileHandling";
 import { makeRecentId } from "@/lib/storage/recentFiles";
 import { useHighlightStore } from "@/state/highlightStore";
 import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
+import { useNoteUi } from "@/state/noteUi";
 import { usePdfStore } from "@/state/pdfStore";
 
 const PAGE_GAP = 16;
@@ -291,6 +292,7 @@ export function PdfViewer() {
       const store = usePdfStore.getState();
       if (e.key === "Escape") {
         useHighlightUi.getState().closeAll();
+        useNoteUi.getState().closeAll();
         return;
       }
       if (store.screen !== "viewer" || isEditable(e.target)) return;

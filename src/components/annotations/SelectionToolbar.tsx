@@ -8,12 +8,14 @@ import {
 } from "@/lib/annotations/selection";
 import { useHighlightStore } from "@/state/highlightStore";
 import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
+import { useNoteUi } from "@/state/noteUi";
 import { usePdfStore } from "@/state/pdfStore";
 
 /**
  * Compact floating toolbar that appears next to a text selection.
  * Choosing a color stores one highlight per touched page, then clears
  * the DOM selection so the new highlight quads show through cleanly.
+ * "Add Note" opens the note editor anchored to the first selected page.
  */
 export function SelectionToolbar() {
   const pending = useHighlightUi((s) => s.pending);
@@ -91,6 +93,32 @@ export function SelectionToolbar() {
     hideSelection();
   };
 
+  const handleAddNote = () => {
+    const first = pending.pages[0];
+    if (!first) return;
+    const docId = currentDocId();
+    if (!docId) return;
+    const { fileName } = usePdfStore.getState();
+    // Anchor the pin just beside the selection (offset so text stays clear).
+    let x = 0;
+    let y = 0;
+    if (first.quads.length > 0) {
+      x = Math.max(...first.quads.map((q) => q.left + q.width));
+      y = Math.min(...first.quads.map((q) => q.top));
+    }
+    useNoteUi.getState().startNew({
+      docId,
+      docName: fileName ?? "Document",
+      page: first.page,
+      kind: "selection",
+      selectedText: first.text,
+      x,
+      y,
+    });
+    clearDomSelection();
+    hideSelection();
+  };
+
   const style: React.CSSProperties = pending.anchor.above
     ? {
         left: pending.anchor.x,
@@ -107,7 +135,7 @@ export function SelectionToolbar() {
     <div
       className="hl-toolbar"
       role="toolbar"
-      aria-label="Highlight selection"
+      aria-label="Highlight or annotate selection"
       style={style}
       // Don't let mousedown in the toolbar collapse the selection.
       onMouseDown={(e) => e.preventDefault()}
@@ -124,6 +152,17 @@ export function SelectionToolbar() {
           onClick={() => handlePick(c.id)}
         />
       ))}
+      <span className="hl-sep" aria-hidden="true" />
+      <button
+        type="button"
+        className="btn btn-small"
+        onClick={handleAddNote}
+        title="Add a note to the selected text"
+        aria-label="Add Note"
+      >
+        <Icon name="note" size={13} />
+        <span>Add Note</span>
+      </button>
       <button
         type="button"
         className="hl-toolbar-close"

@@ -75,6 +75,8 @@ interface PdfState {
 
   openPdf: (input: OpenedPdfInput) => Promise<void>;
   closeDocument: () => void;
+  /** Returns to the open document without reloading (e.g. from Notes). */
+  showViewer: () => void;
   refreshRecent: () => void;
   removeRecent: (id: string) => void;
   clearRecent: () => void;
@@ -214,6 +216,8 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
   },
 
   refreshRecent: () => set({ recent: listRecentFiles() }),
+  showViewer: () =>
+    set((s) => (s.docKey && s.numPages > 0 ? { screen: "viewer" } : s)),
   removeRecent: (id: string) => set({ recent: removeRecentFile(id) }),
   clearRecent: () => set({ recent: clearRecentFiles() }),
 
