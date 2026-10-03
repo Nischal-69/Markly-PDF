@@ -29,6 +29,9 @@ export async function buildTextLayer(
     container.style.height = `${viewport.height}px`;
 
     const fragment = document.createDocumentFragment();
+    // divIndex mirrors the span order 1:1 so selections can later be
+    // mapped back to text-layer ranges for highlight anchoring.
+    let divIndex = 0;
 
     for (const rawItem of textContent.items) {
       if (!("str" in rawItem)) {
@@ -45,6 +48,8 @@ export async function buildTextLayer(
 
       const span = document.createElement("span");
       span.textContent = item.str;
+      span.dataset.divIndex = String(divIndex);
+      divIndex += 1;
 
       // Baseline origin: PDF positions by baseline, CSS by top-left.
       const angle = Math.atan2(tx[1], tx[0]);

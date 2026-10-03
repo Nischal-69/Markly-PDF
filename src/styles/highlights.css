@@ -1,0 +1,128 @@
+/* Markly PDF — text highlights, selection toolbar, highlight editor. */
+
+.pdf-annotation-layer {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* One highlight quad: translucent so the PDF text stays fully readable.
+   Positioned from scale-free stored quads (left/top/width/height set
+   inline as quad * current zoom).
+   pointer-events:none is deliberate: the quads must never intercept mouse
+   input, otherwise selections starting on a highlight would break and
+   clicks couldn't reach the text layer. Click-to-edit is resolved
+   geometrically (hit test) in the viewer instead. */
+.hl {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.hl-yellow { background: rgba(255, 224, 51, 0.42); }
+.hl-green { background: rgba(76, 200, 112, 0.4); }
+.hl-blue { background: rgba(66, 165, 245, 0.38); }
+.hl-orange { background: rgba(255, 158, 44, 0.4); }
+.hl-pink { background: rgba(236, 110, 173, 0.4); }
+.hl-purple { background: rgba(158, 116, 240, 0.38); }
+
+/* ---------- floating selection toolbar ---------- */
+
+.hl-toolbar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+
+.hl-toolbar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-right: 2px;
+}
+
+.hl-dot {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.hl-dot:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--text-sub);
+}
+
+.hl-dot.is-active {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+.hl-toolbar-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.hl-toolbar-close:hover {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--text);
+}
+
+/* ---------- highlight editor popover ---------- */
+
+.hl-editor {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, 8px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  user-select: none;
+}
+
+.hl-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border-strong);
+  margin: 0 2px;
+}
+
+.hl-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.hl-delete:hover {
+  background: var(--danger-soft);
+  border-color: #f5c6c2;
+  color: var(--danger);
+}

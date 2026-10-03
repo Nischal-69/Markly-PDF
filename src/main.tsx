@@ -6,6 +6,7 @@ import "./styles/sidebar.css";
 import "./styles/toolbar.css";
 import "./styles/viewer.css";
 import "./styles/library.css";
+import "./styles/highlights.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Markly PDF: #root element is missing.");

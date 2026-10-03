@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PdfPage } from "./PdfPage";
 import { ThumbnailPanel } from "./ThumbnailPanel";
 import { Icon } from "@/components/icons/Icon";
+import {
+  captureSelection,
+  getSelectionAnchorRect,
+} from "@/lib/annotations/selection";
 import { saveCurrentPdfCopy } from "@/lib/files/fileHandling";
+import { makeRecentId } from "@/lib/storage/recentFiles";
+import { useHighlightStore } from "@/state/highlightStore";
+import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
 import { usePdfStore } from "@/state/pdfStore";
 
 const PAGE_GAP = 16;
@@ -45,6 +52,24 @@ export function PdfViewer() {
   } | null>(null);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
   const prevScaleRef = useRef(scale);
+  const downPos = useRef<{ x: number; y: number } | null>(null);
+
+  // Highlights belong to the open document: load on open/switch, clear
+  // on close/unmount. Restored quads render as soon as pages paint.
+  const fileName = usePdfStore((s) => s.fileName);
+  const filePath = usePdfStore((s) => s.filePath);
+  const fileSize = usePdfStore((s) => s.fileSize);
+  const docId = fileName
+    ? makeRecentId(filePath ?? "", fileName, fileSize ?? 0)
+    : null;
+  useEffect(() => {
+    if (!docId) return;
+    useHighlightStore.getState().loadForDoc(docId);
+    return () => {
+      useHighlightStore.getState().clear();
+      useHighlightUi.getState().closeAll();
+    };
+  }, [docId]);
 
   const pages = useMemo(
     () => Array.from({ length: numPages }, (_, i) => i + 1),
@@ -157,6 +182,73 @@ export function PdfViewer() {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [docKey]);
 
+  // --- Text selection → highlight toolbar / highlight editor ------------
+  const handleMouseDown = (e: React.MouseEvent) => {
+    downPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const ui = useHighlightUi.getState();
+    const start = downPos.current;
+    downPos.current = null;
+
+    const sel = window.getSelection();
+    const collapsed = !sel || sel.rangeCount === 0 || sel.isCollapsed;
+
+    if (collapsed) {
+      ui.hideSelection();
+      // Plain click (not a drag) on an existing highlight opens its editor.
+      // Quads are pointer-events:none, so hit-testing is geometric: the
+      // click point is mapped into scale-1 quad space of the clicked page.
+      if (start) {
+        const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+        if (moved < 5) {
+          const target = e.target as HTMLElement | null;
+          const pageEl = target?.closest?.(".pdf-page") as HTMLElement | null;
+          const pageNumber = Number(pageEl?.dataset.pageNumber);
+          if (pageEl && Number.isFinite(pageNumber)) {
+            const rect = pageEl.getBoundingClientRect();
+            const scale = usePdfStore.getState().scale;
+            const TOL = 2; // css px tolerance around each quad
+            const hit = useHighlightStore
+              .getState()
+              .highlights.find(
+                (h) =>
+                  h.page === pageNumber &&
+                  h.quads.some((q) => {
+                    const left = rect.left + q.left * scale;
+                    const top = rect.top + q.top * scale;
+                    return (
+                      e.clientX >= left - TOL &&
+                      e.clientX <= left + q.width * scale + TOL &&
+                      e.clientY >= top - TOL &&
+                      e.clientY <= top + q.height * scale + TOL
+                    );
+                  }),
+              );
+            if (hit) {
+              ui.openEditor({ highlightId: hit.id, x: e.clientX, y: e.clientY });
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    // Non-collapsed selection (mouse drag, double-click word, etc.).
+    const captured = captureSelection(usePdfStore.getState().scale);
+    if (captured.length === 0) {
+      ui.hideSelection();
+      return;
+    }
+    const anchorRect = getSelectionAnchorRect();
+    if (!anchorRect) {
+      ui.hideSelection();
+      return;
+    }
+    ui.showSelection(captured, anchorFromRect(anchorRect));
+  };
+
   // Preserve the reading position across zoom changes: page heights scale
   // linearly, so scaling the scroll offset keeps the same content in view.
   useEffect(() => {
@@ -197,6 +289,10 @@ export function PdfViewer() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       const store = usePdfStore.getState();
+      if (e.key === "Escape") {
+        useHighlightUi.getState().closeAll();
+        return;
+      }
       if (store.screen !== "viewer" || isEditable(e.target)) return;
 
       const mod = e.ctrlKey || e.metaKey;
@@ -319,6 +415,8 @@ export function PdfViewer() {
         role="document"
         aria-label={`PDF document, ${numPages} pages`}
         tabIndex={0}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
       >
         {status === "loading" && (
           <div className="viewer-loading" role="status">

@@ -5,6 +5,7 @@ import {
   renderPageToCanvas,
 } from "@/lib/pdf/pdfEngine";
 import { buildTextLayer } from "@/lib/pdf/textLayer";
+import { AnnotationLayer } from "@/components/annotations/AnnotationLayer";
 import type { PDFPageProxy, RenderTask } from "pdfjs-dist";
 
 interface PdfPageProps {
@@ -154,12 +155,14 @@ export function PdfPage({
     >
       <canvas ref={canvasRef} className="pdf-canvas" />
       <div ref={textRef} className="pdf-text-layer" aria-hidden={false} />
-      {/* Batch 2 reservation: highlights, notes and drawing mount here,
+      {/* Batch 3+: highlights (and future annotations) mount here,
           sharing the exact viewport coordinate space above. */}
       <div
         className="pdf-annotation-layer"
         data-annotation-layer={pageNumber}
-      />
+      >
+        <AnnotationLayer pageNumber={pageNumber} scale={scale} />
+      </div>
       {!nearViewport && !renderError && <div className="pdf-page-skeleton" />}
       {renderError && (
         <div className="pdf-page-error" role="alert">
