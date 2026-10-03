@@ -73,9 +73,15 @@ function toPdfLoadError(raw: unknown): PdfLoadError {
 let currentDoc: PDFDocumentProxy | null = null;
 let currentKey: string | null = null;
 let loadGeneration = 0;
+/** Original file bytes, retained so "Save a copy" needs no re-read. */
+let originalBytes: Uint8Array | null = null;
 
 export function getLoadedDocument(): PDFDocumentProxy | null {
   return currentDoc;
+}
+
+export function getOriginalBytes(): Uint8Array | null {
+  return originalBytes;
 }
 
 export async function closePdfDocument(): Promise<void> {
@@ -83,6 +89,7 @@ export async function closePdfDocument(): Promise<void> {
   const doc = currentDoc;
   currentDoc = null;
   currentKey = null;
+  originalBytes = null;
   if (doc) {
     try {
       await doc.destroy();
@@ -100,21 +107,30 @@ export async function closePdfDocument(): Promise<void> {
 export async function loadPdfDocument(
   data: ArrayBuffer,
   key: string,
+  onProgress?: (loaded: number, total: number) => void,
 ): Promise<PDFDocumentProxy> {
   ensurePdfWorker();
   const generation = ++loadGeneration;
 
-  // Copy: PDF.js may detach (transfer) the buffer it is given.
+  // Copy: PDF.js may detach (transfer) the buffer it is given, so the
+  // retained original and the worker's copy must be distinct buffers.
   const bytes = new Uint8Array(data.slice(0));
 
   let doc: PDFDocumentProxy;
   try {
     const task = pdfjsLib.getDocument({
-      data: bytes,
+      data: bytes.slice(),
       cMapUrl: undefined,
       cMapPacked: false,
       useSystemFonts: true,
     });
+    if (onProgress) {
+      task.onProgress = (progress: { loaded: number; total: number }) => {
+        if (generation === loadGeneration) {
+          onProgress(progress.loaded, progress.total);
+        }
+      };
+    }
     doc = await task.promise;
   } catch (raw) {
     throw toPdfLoadError(raw);
@@ -139,6 +155,7 @@ export async function loadPdfDocument(
   const previous = currentDoc;
   currentDoc = doc;
   currentKey = key;
+  originalBytes = bytes;
   if (previous && previous !== doc) {
     void previous.destroy().catch(() => undefined);
   }

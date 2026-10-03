@@ -24,6 +24,10 @@
 .pdf-page-slot {
   display: flex;
   justify-content: center;
+  /* Lets the browser skip offscreen pages (paint, layout, text layer)
+     which keeps large PDFs smooth. Sizes stay exact: .pdf-page always
+     carries explicit width/height, so no scrollbar jumping occurs. */
+  content-visibility: auto;
 }
 
 /* One page: canvas + stacked layers share the exact same box. */
@@ -83,6 +87,10 @@
   background: var(--danger-soft);
   color: #61100f;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
 }
 
 .pdf-endmark {
@@ -102,6 +110,39 @@
   border-radius: 8px;
   font-size: 14px;
   color: var(--text-sub);
+}
+
+/* Floating exit control while the viewer is fullscreen. */
+.fullscreen-exit {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.fullscreen-exit:hover {
+  background: #fff;
+  border-color: #c8c6c4;
+}
+
+/* The fullscreen element keeps the viewer background, not the page gray. */
+.viewer-area:fullscreen {
+  background: var(--viewer-bg);
+}
+
+.viewer-area:fullscreen .pdf-scroll {
+  padding-top: 32px;
 }
 
 /* ---------- thumbnails ---------- */
@@ -135,6 +176,10 @@
   border-radius: var(--radius);
   background: transparent;
   cursor: pointer;
+  /* Hundreds of thumbnails stay cheap: offscreen items skip rendering
+     while keeping approximate size for a stable scrollbar. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 124px 180px;
 }
 
 .thumb-item:hover {

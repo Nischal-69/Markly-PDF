@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
-import { openPdfFromDisk } from "@/lib/files/fileHandling";
+import { openPdfFromDisk, saveCurrentPdfCopy } from "@/lib/files/fileHandling";
 import { MAX_SCALE, MIN_SCALE, usePdfStore } from "@/state/pdfStore";
 
 function formatZoom(scale: number): string {
@@ -14,7 +14,7 @@ export function TopToolbar() {
   const numPages = usePdfStore((s) => s.numPages);
   const currentPage = usePdfStore((s) => s.currentPage);
   const scale = usePdfStore((s) => s.scale);
-  const fitToWidth = usePdfStore((s) => s.fitToWidth);
+  const fitMode = usePdfStore((s) => s.fitMode);
   const showThumbnails = usePdfStore((s) => s.showThumbnails);
 
   const openPdf = usePdfStore((s) => s.openPdf);
@@ -25,10 +25,13 @@ export function TopToolbar() {
   const zoomIn = usePdfStore((s) => s.zoomIn);
   const zoomOut = usePdfStore((s) => s.zoomOut);
   const resetZoom = usePdfStore((s) => s.resetZoom);
-  const setFitToWidth = usePdfStore((s) => s.setFitToWidth);
+  const setFitMode = usePdfStore((s) => s.setFitMode);
   const toggleThumbnails = usePdfStore((s) => s.toggleThumbnails);
+  const requestFullscreen = usePdfStore((s) => s.requestFullscreen);
+  const notify = usePdfStore((s) => s.notify);
 
   const [opening, setOpening] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [pageDraft, setPageDraft] = useState<string | null>(null);
   const pageInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +53,19 @@ export function TopToolbar() {
       if (picked) await openPdf(picked);
     } finally {
       setOpening(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (saving || !fileName) return;
+    setSaving(true);
+    try {
+      const result = await saveCurrentPdfCopy(fileName);
+      if (result === "saved") notify(`Saved a copy of ${fileName}.`);
+    } catch {
+      notify("Could not save the PDF. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -75,6 +91,17 @@ export function TopToolbar() {
           <span>{opening || busy ? "Opening…" : "Open PDF"}</span>
         </button>
 
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={handleSave}
+          disabled={!inViewer || saving || status !== "ready"}
+          title="Save a copy of this PDF (Ctrl+S)"
+          aria-label="Save a copy of this PDF"
+        >
+          <Icon name="save" size={15} />
+        </button>
+
         {inViewer && fileName && (
           <div className="toolbar-doc" title={fileName}>
             <Icon name="file" size={15} />
@@ -89,7 +116,7 @@ export function TopToolbar() {
           className="btn btn-icon"
           onClick={prevPage}
           disabled={!inViewer || currentPage <= 1}
-          title="Previous page"
+          title="Previous page (Page Up)"
           aria-label="Previous page"
         >
           <Icon name="chevronLeft" size={16} />
@@ -125,7 +152,7 @@ export function TopToolbar() {
           className="btn btn-icon"
           onClick={nextPage}
           disabled={!inViewer || currentPage >= numPages}
-          title="Next page"
+          title="Next page (Page Down)"
           aria-label="Next page"
         >
           <Icon name="chevronRight" size={16} />
@@ -138,7 +165,7 @@ export function TopToolbar() {
           className="btn btn-icon"
           onClick={zoomOut}
           disabled={!inViewer || scale <= MIN_SCALE}
-          title="Zoom out"
+          title="Zoom out (Ctrl+−)"
           aria-label="Zoom out"
         >
           <Icon name="minus" size={15} />
@@ -149,7 +176,7 @@ export function TopToolbar() {
           className="zoom-label"
           onClick={resetZoom}
           disabled={!inViewer}
-          title="Reset zoom to 100%"
+          title="Reset zoom to 100% (Ctrl+0)"
         >
           {inViewer ? formatZoom(scale) : "–"}
         </button>
@@ -159,7 +186,7 @@ export function TopToolbar() {
           className="btn btn-icon"
           onClick={zoomIn}
           disabled={!inViewer || scale >= MAX_SCALE}
-          title="Zoom in"
+          title="Zoom in (Ctrl++)"
           aria-label="Zoom in"
         >
           <Icon name="plus" size={15} />
@@ -167,14 +194,26 @@ export function TopToolbar() {
 
         <button
           type="button"
-          className={`btn btn-icon${fitToWidth && inViewer ? " is-active" : ""}`}
-          onClick={() => setFitToWidth(!fitToWidth)}
+          className={`btn btn-icon${fitMode === "width" && inViewer ? " is-active" : ""}`}
+          onClick={() => setFitMode(fitMode === "width" ? "custom" : "width")}
           disabled={!inViewer}
-          title={fitToWidth ? "Fit-to-width is on" : "Fit page to width"}
+          title="Fit page to width"
           aria-label="Fit page to width"
-          aria-pressed={fitToWidth && inViewer}
+          aria-pressed={fitMode === "width" && inViewer}
         >
           <Icon name="fitWidth" size={15} />
+        </button>
+
+        <button
+          type="button"
+          className={`btn btn-icon${fitMode === "page" && inViewer ? " is-active" : ""}`}
+          onClick={() => setFitMode(fitMode === "page" ? "custom" : "page")}
+          disabled={!inViewer}
+          title="Fit whole page in view"
+          aria-label="Fit whole page in view"
+          aria-pressed={fitMode === "page" && inViewer}
+        >
+          <Icon name="fitPage" size={15} />
         </button>
 
         <span className="toolbar-sep" />
@@ -189,6 +228,17 @@ export function TopToolbar() {
           aria-pressed={showThumbnails && inViewer}
         >
           <Icon name="panel" size={15} />
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={requestFullscreen}
+          disabled={!inViewer}
+          title="Fullscreen viewer (F11)"
+          aria-label="Fullscreen viewer"
+        >
+          <Icon name="fullscreen" size={15} />
         </button>
 
         {inViewer && (

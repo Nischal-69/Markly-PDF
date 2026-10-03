@@ -18,10 +18,15 @@ export type SidebarView = "home" | "recent" | "notes" | "bookmarks";
 export type LoadStatus = "idle" | "loading" | "ready" | "error";
 /** Library = sidebar screens; viewer = open document takes the main area. */
 export type Screen = "library" | "viewer";
+/** Zoom follows the chosen fit strategy until the user zooms manually. */
+export type FitMode = "width" | "page" | "custom";
 
 export const MIN_SCALE = 0.25;
 export const MAX_SCALE = 4;
 export const DEFAULT_SCALE = 1;
+/** Must mirror `.pdf-scroll` padding in viewer.css (24px sides, 24+48 vertical). */
+export const VIEWER_PAD_X = 48;
+export const VIEWER_PAD_Y = 72;
 
 const clampScale = (value: number): number =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(value * 100) / 100));
@@ -39,11 +44,23 @@ interface PdfState {
   currentPage: number;
 
   scale: number;
-  fitToWidth: boolean;
+  fitMode: FitMode;
 
   sidebarView: SidebarView;
   showThumbnails: boolean;
   screen: Screen;
+  isFullscreen: boolean;
+  /**
+   * Bumps when the toolbar asks for fullscreen. The viewer (which owns the
+   * element) performs the request; exits via Esc/overlay sync back
+   * through `isFullscreen` via the fullscreenchange event.
+   */
+  fsToken: number;
+
+  /** 0..1 while a document is parsing, otherwise null. */
+  loadProgress: number | null;
+  /** Transient toast message (e.g. "Search is coming soon"). */
+  notice: string | null;
   /**
    * Bumps on every programmatic navigation (toolbar buttons, thumbnails,
    * page input). The viewer scrolls on token change; scroll-driven
@@ -71,11 +88,20 @@ interface PdfState {
   zoomOut: () => void;
   setScale: (scale: number) => void;
   resetZoom: () => void;
-  setFitToWidth: (enabled: boolean) => void;
-  applyFitWidth: (containerWidth: number, pageWidthPt: number) => void;
+  setFitMode: (mode: FitMode) => void;
+  applyFit: (
+    containerWidth: number,
+    containerHeight: number,
+    pageWidthPt: number,
+    pageHeightPt: number,
+  ) => void;
 
   setSidebarView: (view: SidebarView) => void;
   toggleThumbnails: () => void;
+  setFullscreen: (enabled: boolean) => void;
+  requestFullscreen: () => void;
+  notify: (message: string) => void;
+  dismissNotice: () => void;
   dismissError: () => void;
 }
 
@@ -91,12 +117,17 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
   currentPage: 1,
 
   scale: DEFAULT_SCALE,
-  fitToWidth: true,
+  fitMode: "width",
 
   sidebarView: "home",
   showThumbnails: true,
   screen: "library",
   navToken: 0,
+  isFullscreen: false,
+  fsToken: 0,
+
+  loadProgress: null,
+  notice: null,
 
   error: null,
   errorDetails: null,
@@ -106,6 +137,7 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
   openPdf: async (input: OpenedPdfInput) => {
     set({
       status: "loading",
+      loadProgress: 0,
       error: null,
       errorDetails: null,
       fileName: input.name,
@@ -115,7 +147,12 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
     try {
       const key =
         input.path || `${input.name}:${input.size}:${Date.now()}`;
-      const doc = await loadPdfDocument(input.data, key);
+      const doc = await loadPdfDocument(input.data, key, (loaded, total) => {
+        set({
+          loadProgress:
+            total > 0 ? Math.min(1, Math.max(0, loaded / total)) : null,
+        });
+      });
       const recent = addRecentFile({
         id: makeRecentId(input.path, input.name, input.size),
         name: input.name,
@@ -125,13 +162,14 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
       });
       set({
         status: "ready",
+        loadProgress: null,
         numPages: doc.numPages,
         currentPage: 1,
         docKey: `${Date.now()}`,
         screen: "viewer",
         navToken: get().navToken + 1,
-        scale: get().fitToWidth ? get().scale : DEFAULT_SCALE,
-        fitToWidth: true,
+        scale: DEFAULT_SCALE,
+        fitMode: "width",
         recent,
       });
     } catch (raw) {
@@ -142,6 +180,7 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
           : "This PDF could not be opened. Please try a different file.";
       set({
         status: "error",
+        loadProgress: null,
         error: message,
         errorDetails:
           raw instanceof PdfLoadError
@@ -166,7 +205,9 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
       numPages: 0,
       currentPage: 1,
       scale: DEFAULT_SCALE,
-      fitToWidth: true,
+      fitMode: "width",
+      isFullscreen: false,
+      loadProgress: null,
       error: null,
       errorDetails: null,
     });
@@ -194,23 +235,36 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
   },
 
   zoomIn: () =>
-    set((s) => ({ scale: clampScale(s.scale * 1.25), fitToWidth: false })),
+    set((s) => ({ scale: clampScale(s.scale * 1.25), fitMode: "custom" })),
   zoomOut: () =>
-    set((s) => ({ scale: clampScale(s.scale / 1.25), fitToWidth: false })),
+    set((s) => ({ scale: clampScale(s.scale / 1.25), fitMode: "custom" })),
   setScale: (scale: number) =>
-    set({ scale: clampScale(scale), fitToWidth: false }),
-  resetZoom: () => set({ scale: DEFAULT_SCALE, fitToWidth: false }),
-  setFitToWidth: (enabled: boolean) => set({ fitToWidth: enabled }),
+    set({ scale: clampScale(scale), fitMode: "custom" }),
+  resetZoom: () => set({ scale: DEFAULT_SCALE, fitMode: "custom" }),
+  setFitMode: (mode: FitMode) => set({ fitMode: mode }),
 
-  applyFitWidth: (containerWidth: number, pageWidthPt: number) => {
-    if (!get().fitToWidth || pageWidthPt <= 0 || containerWidth <= 0) return;
-    const next = clampScale(containerWidth / pageWidthPt);
-    if (Math.abs(next - get().scale) > 0.001) set({ scale: next });
+  applyFit: (containerWidth, containerHeight, pageWidthPt, pageHeightPt) => {
+    const mode = get().fitMode;
+    if (mode === "custom") return;
+    if (pageWidthPt <= 0 || pageHeightPt <= 0) return;
+    const availW = containerWidth - VIEWER_PAD_X;
+    const availH = containerHeight - VIEWER_PAD_Y;
+    if (availW <= 0 || availH <= 0) return;
+    const next =
+      mode === "page"
+        ? Math.min(availW / pageWidthPt, availH / pageHeightPt)
+        : availW / pageWidthPt;
+    const clamped = clampScale(next);
+    if (Math.abs(clamped - get().scale) > 0.001) set({ scale: clamped });
   },
 
   setSidebarView: (view: SidebarView) =>
     set({ sidebarView: view, screen: "library" }),
   toggleThumbnails: () => set((s) => ({ showThumbnails: !s.showThumbnails })),
+  setFullscreen: (enabled: boolean) => set({ isFullscreen: enabled }),
+  requestFullscreen: () => set((s) => ({ fsToken: s.fsToken + 1 })),
+  notify: (message: string) => set({ notice: message }),
+  dismissNotice: () => set({ notice: null }),
   dismissError: () =>
     set((s) => ({
       error: null,

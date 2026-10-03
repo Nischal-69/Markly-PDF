@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { Toast } from "@/components/common/Toast";
 import { HomeScreen } from "@/components/library/HomeScreen";
 import { RecentScreen } from "@/components/library/RecentScreen";
 import { ComingSoon } from "@/components/library/ComingSoon";
@@ -53,6 +54,7 @@ export default function App() {
         <main className="content">
           {screen === "viewer" ? <PdfViewer /> : <LibraryScreen />}
         </main>
+        <Toast />
       </div>
     </div>
   );

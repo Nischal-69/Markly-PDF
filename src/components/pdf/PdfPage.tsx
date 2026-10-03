@@ -13,8 +13,7 @@ interface PdfPageProps {
   /** Scroll container used as the IntersectionObserver root. */
   scrollRoot: Element | null;
   registerRef: (page: number, el: HTMLDivElement | null) => void;
-  firstPageWidthPt: number | null;
-  onFirstPageMeasured: (widthPt: number) => void;
+  onFirstPageMeasured: (size: { width: number; height: number }) => void;
   docKey: string;
 }
 
@@ -29,7 +28,6 @@ export function PdfPage({
   scale,
   scrollRoot,
   registerRef,
-  firstPageWidthPt,
   onFirstPageMeasured,
   docKey,
 }: PdfPageProps) {
@@ -40,6 +38,7 @@ export function PdfPage({
   const [nearViewport, setNearViewport] = useState(false);
   const [sizePt, setSizePt] = useState<{ width: number; height: number } | null>(null);
   const [renderError, setRenderError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
 
   // Measure page size once per document (cheap, no rendering).
   useEffect(() => {
@@ -51,7 +50,7 @@ export function PdfPage({
       .then((dims) => {
         if (!alive) return;
         setSizePt(dims);
-        if (pageNumber === 1) onFirstPageMeasured(dims.width);
+        if (pageNumber === 1) onFirstPageMeasured(dims);
       })
       .catch(() => {
         if (alive) setSizePt({ width: 595, height: 842 });
@@ -134,7 +133,7 @@ export function PdfPage({
         }
       }
     };
-  }, [nearViewport, scale, sizePt, pageNumber, docKey]);
+  }, [nearViewport, scale, sizePt, pageNumber, docKey, retryToken]);
 
   const cssWidth = (sizePt?.width ?? 595) * scale;
   const cssHeight = sizePt
@@ -160,12 +159,18 @@ export function PdfPage({
       <div
         className="pdf-annotation-layer"
         data-annotation-layer={pageNumber}
-        data-first-width-pt={pageNumber === 1 ? (firstPageWidthPt ?? "") : undefined}
       />
       {!nearViewport && !renderError && <div className="pdf-page-skeleton" />}
       {renderError && (
         <div className="pdf-page-error" role="alert">
-          Could not render {pageLabel.toLowerCase()}.
+          <span>Could not render {pageLabel.toLowerCase()}.</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-small"
+            onClick={() => setRetryToken((t) => t + 1)}
+          >
+            Retry
+          </button>
         </div>
       )}
     </div>

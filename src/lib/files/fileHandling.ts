@@ -1,5 +1,6 @@
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { readFile, stat } from "@tauri-apps/plugin-fs";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { readFile, stat, writeFile } from "@tauri-apps/plugin-fs";
+import { getOriginalBytes } from "@/lib/pdf/pdfEngine";
 
 export interface OpenedPdfInput {
   name: string;
@@ -131,4 +132,52 @@ export async function openPdfFromDisk(): Promise<OpenedPdfInput | null> {
     }
   }
   return pickViaBrowser();
+}
+
+export type SaveResult = "saved" | "cancelled";
+
+/**
+ * Saves a copy of the currently loaded PDF (original bytes, unmodified).
+ * Under Tauri this shows the native save dialog; in the browser it
+ * triggers a download. Throws when no document is loaded or I/O fails.
+ */
+export async function saveCurrentPdfCopy(suggestedName: string): Promise<SaveResult> {
+  const bytes = getOriginalBytes();
+  if (!bytes) throw new Error("No PDF document is loaded.");
+
+  const fileName =
+    suggestedName.toLowerCase().endsWith(".pdf") || suggestedName === ""
+      ? suggestedName || "document.pdf"
+      : `${suggestedName}.pdf`;
+
+  if (isTauriRuntime()) {
+    try {
+      const target = await saveDialog({
+        defaultPath: fileName,
+        title: "Save a copy of this PDF",
+        filters: [{ name: "PDF documents", extensions: ["pdf"] }],
+      });
+      if (!target) return "cancelled";
+      await writeFile(target, bytes);
+      return "saved";
+    } catch {
+      // Native save unavailable — fall through to browser download.
+    }
+  }
+
+  const blob = new Blob([bytes.slice().buffer as ArrayBuffer], {
+    type: "application/pdf",
+  });
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+  return "saved";
 }

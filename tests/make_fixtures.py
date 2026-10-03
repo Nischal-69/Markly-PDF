@@ -1,5 +1,5 @@
 """Generates Batch 1 test fixtures: a 5-page text PDF + a corrupt file."""
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 
 OUT = "tests/fixtures/markly-5page.pdf"
@@ -34,3 +34,21 @@ print("wrote", OUT)
 with open("tests/fixtures/corrupt.pdf", "wb") as f:
     f.write(b"%PDF-1.4 GARBAGE TRUNCATED \x00\xff\xfe not a real pdf xref")
 print("wrote tests/fixtures/corrupt.pdf")
+
+# Mixed-orientation document: portrait page + landscape page.
+MIXED = "tests/fixtures/markly-mixed.pdf"
+m = canvas.Canvas(MIXED, pagesize=A4)
+m.setFont("Helvetica-Bold", 20)
+m.drawString(72, A4[1] - 96, "Mixed 1 — portrait A4")
+m.setFont("Helvetica", 12)
+m.drawString(72, A4[1] - 140, "First page is portrait. Fit modes must handle both.")
+m.showPage()
+m.setPageSize(landscape(A4))
+W, H = landscape(A4)
+m.setFont("Helvetica-Bold", 20)
+m.drawString(72, H - 96, "Mixed 2 — landscape A4")
+m.setFont("Helvetica", 12)
+m.drawString(72, H - 140, "Second page is landscape and wider than tall.")
+m.showPage()
+m.save()
+print("wrote", MIXED)
