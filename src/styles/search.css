@@ -1,0 +1,83 @@
+/* Markly PDF — Batch 7: in-document search. */
+
+.viewer-area {
+  position: relative;
+}
+
+/* Floating search bar, top-right of the reading area. */
+.search-bar {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  color: var(--text-sub);
+}
+
+.search-input {
+  width: 200px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.search-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+.search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+.search-count {
+  min-width: 88px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-sub);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.search-nav {
+  width: 28px;
+  height: 28px;
+}
+
+.search-nav:disabled {
+  opacity: 0.35;
+}
+
+/* ---------- search highlight boxes ---------- */
+/* Separate overlay system from .hl highlights: search never writes to
+   highlight storage and never restyles highlight divs. */
+.search-hit {
+  position: absolute;
+  border-radius: 2px;
+  background: rgba(255, 214, 51, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(180, 130, 0, 0.55);
+  pointer-events: none;
+}
+
+.search-hit.is-active {
+  background: rgba(255, 140, 0, 0.65);
+  box-shadow:
+    inset 0 0 0 2px rgba(200, 90, 0, 0.9),
+    0 0 0 2px rgba(255, 140, 0, 0.35);
+}
