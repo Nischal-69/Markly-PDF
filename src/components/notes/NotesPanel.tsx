@@ -16,6 +16,18 @@ function formatDate(ts: number): string {
   return `${date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}, ${time}`;
 }
 
+function formatFull(ts: number): string {
+  return new Date(ts).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+type SortOrder = "newest" | "oldest";
+
 /**
  * Notes navigation panel: every note with title, PDF name, page,
  * short preview + modified date. Clicking a note opens its PDF,
@@ -33,17 +45,47 @@ export function NotesPanel() {
   const notify = usePdfStore((s) => s.notify);
 
   const [query, setQuery] = useState("");
+  const [docFilter, setDocFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [openingId, setOpeningId] = useState<string | null>(null);
+
+  /** Distinct PDFs that have notes, for the "Filter by PDF" dropdown. */
+  const docs = useMemo(() => {
+    const map = new Map<string, { docId: string; docName: string; count: number }>();
+    for (const n of all) {
+      const entry = map.get(n.docId);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        map.set(n.docId, { docId: n.docId, docName: n.docName, count: 1 });
+      }
+    }
+    return [...map.values()].sort((a, b) =>
+      a.docName.localeCompare(b.docName),
+    );
+  }, [all]);
+
+  // If the filtered doc disappears (all its notes deleted), reset to "all".
+  const activeDocFilter = docs.some((d) => d.docId === docFilter) ? docFilter : "all";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return all;
-    return all.filter((n) =>
-      `${n.title} ${n.content} ${n.selectedText} ${n.docName}`
-        .toLowerCase()
-        .includes(q),
+    let list = all;
+    if (activeDocFilter !== "all") {
+      list = list.filter((n) => n.docId === activeDocFilter);
+    }
+    if (q) {
+      list = list.filter((n) =>
+        `${n.title} ${n.content} ${n.selectedText} ${n.docName}`
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    const sorted = [...list].sort((a, b) =>
+      sortOrder === "newest" ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt,
     );
-  }, [all, query]);
+    return sorted;
+  }, [all, query, activeDocFilter, sortOrder]);
 
   const handleOpen = async (noteId: string) => {
     const note = useNoteStore.getState().all.find((n) => n.id === noteId);
@@ -111,6 +153,8 @@ export function NotesPanel() {
     );
   }
 
+  const isFiltering = query.trim() !== "" || activeDocFilter !== "all";
+
   return (
     <div className="library-scroll">
       <section className="library-page notes-page">
@@ -126,6 +170,44 @@ export function NotesPanel() {
           />
         </div>
 
+        {all.length > 0 && (
+          <div className="notes-filters">
+            <label className="notes-filter">
+              <span className="notes-filter-label">PDF</span>
+              <select
+                className="notes-select"
+                value={activeDocFilter}
+                onChange={(e) => setDocFilter(e.target.value)}
+                aria-label="Filter notes by PDF"
+              >
+                <option value="all">All PDFs ({all.length})</option>
+                {docs.map((d) => (
+                  <option key={d.docId} value={d.docId}>
+                    {d.docName} ({d.count})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="notes-filter">
+              <span className="notes-filter-label">Sort</span>
+              <select
+                className="notes-select"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                aria-label="Sort notes"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </label>
+            {isFiltering && (
+              <span className="notes-count muted" role="status">
+                Showing {filtered.length} of {all.length}
+              </span>
+            )}
+          </div>
+        )}
+
         {all.length === 0 ? (
           <div className="recent-empty">
             <Icon name="note" size={28} />
@@ -137,11 +219,33 @@ export function NotesPanel() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="recent-empty">
-            <p>No notes match “{query}”.</p>
+            <p>
+              {query.trim()
+                ? `No notes match “${query.trim()}”.`
+                : "No notes in this PDF yet."}
+            </p>
+            {isFiltering && (
+              <button
+                type="button"
+                className="btn btn-small"
+                onClick={() => {
+                  setQuery("");
+                  setDocFilter("all");
+                }}
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <ul className="notes-list">
-            {filtered.map((note) => (
+            {filtered.map((note) => {
+              const edited = Math.abs(note.updatedAt - note.createdAt) > 60_000;
+              const dateLabel = edited
+                ? `Edited ${formatDate(note.updatedAt)} · Created ${formatDate(note.createdAt)}`
+                : `Created ${formatDate(note.createdAt)}`;
+              const dateTitle = `Created: ${formatFull(note.createdAt)} · Modified: ${formatFull(note.updatedAt)}`;
+              return (
               <li key={note.id} className="note-row">
                 <button
                   type="button"
@@ -156,9 +260,11 @@ export function NotesPanel() {
                       {note.docName}
                     </span>
                     <span>· Page {note.page}</span>
-                    <span>· {formatDate(note.updatedAt)}</span>
                   </span>
                   <span className="note-row-preview">{notePreview(note)}</span>
+                  <span className="note-row-dates" title={dateTitle}>
+                    {dateLabel}
+                  </span>
                 </button>
                 <span className="note-row-side">
                   <button
@@ -188,7 +294,8 @@ export function NotesPanel() {
                   </span>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>

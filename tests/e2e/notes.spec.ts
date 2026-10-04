@@ -122,14 +122,21 @@ test("page note + notes panel navigation + delete", async ({ page }) => {
   await page.getByRole("button", { name: "Save note" }).click();
   await expect(page.locator(".note-pin").first()).toBeVisible({ timeout: 10_000 });
 
-  // Notes panel lists title, PDF name, page, preview, modified date.
+  // Notes panel lists title, PDF name, page, preview, created/modified date.
   await page.getByRole("button", { name: "Notes" }).first().click();
   await expect(page.getByText("Chapter summary").first()).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.getByText("markly-5page.pdf").first()).toBeVisible();
-  await expect(page.getByText(/Page 1/).first()).toBeVisible();
-  await expect(page.getByText(/Whole-page takeaway/).first()).toBeVisible();
+  // Scope to the notes list: the "Filter by PDF" dropdown also contains
+  // the file name inside a hidden <option>.
+  const list = page.locator(".notes-list");
+  await expect(list.getByText("markly-5page.pdf").first()).toBeVisible();
+  await expect(list.getByText(/Page 1/).first()).toBeVisible();
+  await expect(list.getByText(/Whole-page takeaway/).first()).toBeVisible();
+  // Library controls exist: search, PDF filter, newest/oldest sort.
+  await expect(page.getByLabel("Search notes")).toBeVisible();
+  await expect(page.getByLabel("Filter notes by PDF")).toBeVisible();
+  await expect(page.getByLabel("Sort notes")).toBeVisible();
 
   // Clicking a note opens the PDF, navigates, focuses the note popup.
   await page.getByText("Chapter summary").first().click();
