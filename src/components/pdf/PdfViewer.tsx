@@ -4,12 +4,15 @@ import { ThumbnailPanel } from "./ThumbnailPanel";
 import { Icon } from "@/components/icons/Icon";
 import {
   captureSelection,
+  clearDomSelection,
   getSelectionAnchorRect,
 } from "@/lib/annotations/selection";
 import { saveCurrentPdfCopy } from "@/lib/files/fileHandling";
 import { makeRecentId } from "@/lib/storage/recentFiles";
 import { useHighlightStore } from "@/state/highlightStore";
 import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
+import { useMarkupStore } from "@/state/markupStore";
+import { isTextMarkupTool, useMarkupUi } from "@/state/markupUi";
 import { useNoteUi } from "@/state/noteUi";
 import { usePdfStore } from "@/state/pdfStore";
 
@@ -20,6 +23,26 @@ function formatProgress(progress: number | null): string {
   if (progress === null) return "Loading PDF…";
   return `Loading PDF… ${Math.round(progress * 100)}%`;
 }
+
+/** Page + scale-1 point under a pointer event (for markup drawing). */
+function pagePointFromEvent(
+  e: React.MouseEvent,
+  scale: number,
+): { page: number; x: number; y: number } | null {
+  const target = e.target as HTMLElement | null;
+  const pageEl = target?.closest?.(".pdf-page") as HTMLElement | null;
+  const pageNumber = Number(pageEl?.dataset.pageNumber);
+  if (!pageEl || !Number.isFinite(pageNumber)) return null;
+  const rect = pageEl.getBoundingClientRect();
+  return {
+    page: pageNumber,
+    x: (e.clientX - rect.left) / scale,
+    y: (e.clientY - rect.top) / scale,
+  };
+}
+
+const FREEHAND_MIN_DIST = 2.5;
+const FREEHAND_MIN_LEN = 8;
 
 /**
  * Main PDF reading surface: vertical page list with lazy rendering,
@@ -55,8 +78,9 @@ export function PdfViewer() {
   const prevScaleRef = useRef(scale);
   const downPos = useRef<{ x: number; y: number } | null>(null);
 
-  // Highlights belong to the open document: load on open/switch, clear
-  // on close/unmount. Restored quads render as soon as pages paint.
+  // Highlights + markups belong to the open document: load on
+  // open/switch, clear on close/unmount. Restored overlays render as
+  // soon as pages paint. The PDF bytes themselves are never modified.
   const fileName = usePdfStore((s) => s.fileName);
   const filePath = usePdfStore((s) => s.filePath);
   const fileSize = usePdfStore((s) => s.fileSize);
@@ -66,11 +90,20 @@ export function PdfViewer() {
   useEffect(() => {
     if (!docId) return;
     useHighlightStore.getState().loadForDoc(docId);
+    useMarkupStore.getState().loadForDoc(docId);
     return () => {
       useHighlightStore.getState().clear();
       useHighlightUi.getState().closeAll();
+      useMarkupStore.getState().clear();
+      useMarkupUi.getState().closeAll();
     };
   }, [docId]);
+
+  const markupTool = useMarkupUi((s) => s.tool);
+  const drawingRef = useRef<{
+    page: number;
+    startClient: { x: number; y: number };
+  } | null>(null);
 
   const pages = useMemo(
     () => Array.from({ length: numPages }, (_, i) => i + 1),
@@ -183,15 +216,151 @@ export function PdfViewer() {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [docKey]);
 
-  // --- Text selection → highlight toolbar / highlight editor ------------
+  // --- Markup drawing + text selection → toolbars / editors ------------
   const handleMouseDown = (e: React.MouseEvent) => {
     downPos.current = { x: e.clientX, y: e.clientY };
+    const mk = useMarkupUi.getState();
+
+    // Draw tools arm a draft on page press; text selection is suppressed
+    // (preventDefault) so the drag draws instead of selecting. Underline /
+    // strikethrough tools keep native selection — mouseup converts it.
+    if (mk.tool !== "select" && !isTextMarkupTool(mk.tool)) {
+      const scale = usePdfStore.getState().scale;
+      const pt = pagePointFromEvent(e, scale);
+      if (!pt) return;
+      e.preventDefault();
+      drawingRef.current = {
+        page: pt.page,
+        startClient: { x: e.clientX, y: e.clientY },
+      };
+      if (mk.tool === "rect" || mk.tool === "ellipse") {
+        mk.setDraft({ kind: mk.tool, page: pt.page, x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y });
+      } else if (mk.tool === "arrow") {
+        mk.setDraft({ kind: "arrow", page: pt.page, x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y });
+      } else if (mk.tool === "freehand") {
+        mk.setDraft({ kind: "freehand", page: pt.page, points: [{ x: pt.x, y: pt.y }] });
+      }
+      // "text" tool: click position is consumed on mouseup (dialog).
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const mk = useMarkupUi.getState();
+    const drag = drawingRef.current;
+    if (!drag || !mk.draft) return;
+    if (mk.tool === "text" || isTextMarkupTool(mk.tool) || mk.tool === "select") return;
+    const scale = usePdfStore.getState().scale;
+    const pt = pagePointFromEvent(e, scale);
+    if (!pt || pt.page !== drag.page) return;
+    const draft = mk.draft;
+    if (draft.kind === "rect" || draft.kind === "ellipse") {
+      mk.setDraft({ ...draft, x1: pt.x, y1: pt.y });
+    } else if (draft.kind === "arrow") {
+      mk.setDraft({ ...draft, x2: pt.x, y2: pt.y });
+    } else if (draft.kind === "freehand") {
+      const last = draft.points[draft.points.length - 1];
+      if (!last) return;
+      if (Math.hypot(pt.x - last.x, pt.y - last.y) < FREEHAND_MIN_DIST) return;
+      const points = [...draft.points, { x: pt.x, y: pt.y }].slice(-1000);
+      mk.setDraft({ ...draft, points });
+    }
+  };
+
+  /** Commits the in-progress draft (if any) to the markup store. */
+  const commitDraft = (): boolean => {
+    const mk = useMarkupUi.getState();
+    const drag = drawingRef.current;
+    drawingRef.current = null;
+    const draft = mk.draft;
+    mk.setDraft(null);
+    if (!draft || !drag) return false;
+    const docId = fileName
+      ? makeRecentId(filePath ?? "", fileName, fileSize ?? 0)
+      : null;
+    if (!docId) return true;
+    const { color, stroke } = mk;
+    if (draft.kind === "rect" || draft.kind === "ellipse") {
+      const x = Math.min(draft.x0, draft.x1);
+      const y = Math.min(draft.y0, draft.y1);
+      const w = Math.abs(draft.x1 - draft.x0);
+      const h = Math.abs(draft.y1 - draft.y0);
+      if (w >= 6 && h >= 6) {
+        useMarkupStore.getState().addShape(docId, { kind: draft.kind, page: draft.page, x, y, w, h }, { color, stroke });
+      }
+    } else if (draft.kind === "arrow") {
+      if (Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1) >= 8) {
+        useMarkupStore.getState().addShape(
+          docId,
+          { kind: "arrow", page: draft.page, x1: draft.x1, y1: draft.y1, x2: draft.x2, y2: draft.y2 },
+          { color, stroke },
+        );
+      }
+    } else if (draft.kind === "freehand") {
+      let length = 0;
+      for (let i = 1; i < draft.points.length; i++) {
+        length += Math.hypot(
+          draft.points[i].x - draft.points[i - 1].x,
+          draft.points[i].y - draft.points[i - 1].y,
+        );
+      }
+      if (draft.points.length >= 2 && length >= FREEHAND_MIN_LEN) {
+        useMarkupStore.getState().addShape(
+          docId,
+          { kind: "freehand", page: draft.page, points: draft.points },
+          { color, stroke },
+        );
+      }
+    }
+    clearDomSelection();
+    return true;
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
     const ui = useHighlightUi.getState();
+    const mk = useMarkupUi.getState();
     const start = downPos.current;
     downPos.current = null;
+
+    // A draw-tool drag just ended → persist the shape, skip everything else.
+    if (drawingRef.current && mk.tool !== "select" && !isTextMarkupTool(mk.tool)) {
+      // Text tool: plain click places the text dialog; a drag does nothing.
+      if (mk.tool === "text") {
+        const drag = drawingRef.current;
+        drawingRef.current = null;
+        const moved =
+          start != null ? Math.hypot(e.clientX - start.x, e.clientY - start.y) : 99;
+        if (moved < 5 && drag) {
+          const scale = usePdfStore.getState().scale;
+          const pt = pagePointFromEvent(e, scale);
+          if (pt && pt.page === drag.page) {
+            mk.openTextDraft({ page: pt.page, x: Math.max(0, pt.x), y: Math.max(0, pt.y) });
+          }
+        }
+        return;
+      }
+      commitDraft();
+      ui.hideSelection();
+      return;
+    }
+    drawingRef.current = null;
+
+    // Underline / strikethrough tool: convert the text selection directly.
+    if (isTextMarkupTool(mk.tool)) {
+      const captured = captureSelection(usePdfStore.getState().scale);
+      clearDomSelection();
+      ui.hideSelection();
+      if (captured.length > 0) {
+        const docId = fileName
+          ? makeRecentId(filePath ?? "", fileName, fileSize ?? 0)
+          : null;
+        if (docId) {
+          useMarkupStore
+            .getState()
+            .addFromSelection(docId, mk.tool, mk.color, mk.stroke, captured);
+        }
+      }
+      return;
+    }
 
     const sel = window.getSelection();
     const collapsed = !sel || sel.rangeCount === 0 || sel.isCollapsed;
@@ -201,10 +370,14 @@ export function PdfViewer() {
       // Plain click (not a drag) on an existing highlight opens its editor.
       // Quads are pointer-events:none, so hit-testing is geometric: the
       // click point is mapped into scale-1 quad space of the clicked page.
+      // Underlines / strikethroughs share that treatment.
       if (start) {
         const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
         if (moved < 5) {
           const target = e.target as HTMLElement | null;
+          // Shape/text markups stop propagation on their own elements, so
+          // reaching here means the click landed on page content.
+          if ((target?.closest?.("[data-markup-id]") as HTMLElement | null)) return;
           const pageEl = target?.closest?.(".pdf-page") as HTMLElement | null;
           const pageNumber = Number(pageEl?.dataset.pageNumber);
           if (pageEl && Number.isFinite(pageNumber)) {
@@ -229,6 +402,27 @@ export function PdfViewer() {
               );
             if (hit) {
               ui.openEditor({ highlightId: hit.id, x: e.clientX, y: e.clientY });
+              return;
+            }
+            const mkHit = useMarkupStore
+              .getState()
+              .markups.find(
+                (m) =>
+                  m.page === pageNumber &&
+                  (m.kind === "underline" || m.kind === "strike") &&
+                  m.quads.some((q) => {
+                    const left = rect.left + q.left * scale;
+                    const top = rect.top + q.top * scale;
+                    return (
+                      e.clientX >= left - TOL &&
+                      e.clientX <= left + q.width * scale + TOL &&
+                      e.clientY >= top - TOL &&
+                      e.clientY <= top + q.height * scale + TOL
+                    );
+                  }),
+              );
+            if (mkHit) {
+              useMarkupUi.getState().select(mkHit.id, { x: e.clientX, y: e.clientY });
             }
           }
         }
@@ -293,6 +487,7 @@ export function PdfViewer() {
       if (e.key === "Escape") {
         useHighlightUi.getState().closeAll();
         useNoteUi.getState().closeAll();
+        useMarkupUi.getState().closeAll();
         return;
       }
       if (store.screen !== "viewer" || isEditable(e.target)) return;
@@ -413,11 +608,12 @@ export function PdfViewer() {
       )}
       <div
         ref={scrollRef}
-        className="pdf-scroll"
+        className={`pdf-scroll${markupTool !== "select" ? " is-drawing" : ""}`}
         role="document"
         aria-label={`PDF document, ${numPages} pages`}
         tabIndex={0}
         onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
         {status === "loading" && (

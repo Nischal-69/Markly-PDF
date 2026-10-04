@@ -7,6 +7,8 @@ import {
   getSelectionAnchorRect,
 } from "@/lib/annotations/selection";
 import { useHighlightStore } from "@/state/highlightStore";
+import { useMarkupStore } from "@/state/markupStore";
+import { useMarkupUi } from "@/state/markupUi";
 import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
 import { useNoteUi } from "@/state/noteUi";
 import { usePdfStore } from "@/state/pdfStore";
@@ -93,6 +95,16 @@ export function SelectionToolbar() {
     hideSelection();
   };
 
+  const handleTextMarkup = (kind: "underline" | "strike") => {
+    const docId = currentDocId();
+    if (docId) {
+      const { color, stroke } = useMarkupUi.getState();
+      useMarkupStore.getState().addFromSelection(docId, kind, color, stroke, pending.pages);
+    }
+    clearDomSelection();
+    hideSelection();
+  };
+
   const handleAddNote = () => {
     const first = pending.pages[0];
     if (!first) return;
@@ -152,6 +164,25 @@ export function SelectionToolbar() {
           onClick={() => handlePick(c.id)}
         />
       ))}
+      <span className="hl-sep" aria-hidden="true" />
+      <button
+        type="button"
+        className="btn btn-small"
+        onClick={() => handleTextMarkup("underline")}
+        title="Underline the selected text"
+        aria-label="Underline selection"
+      >
+        <Icon name="underline" size={13} />
+      </button>
+      <button
+        type="button"
+        className="btn btn-small"
+        onClick={() => handleTextMarkup("strike")}
+        title="Strike through the selected text"
+        aria-label="Strikethrough selection"
+      >
+        <Icon name="strike" size={13} />
+      </button>
       <span className="hl-sep" aria-hidden="true" />
       <button
         type="button"

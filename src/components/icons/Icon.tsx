@@ -20,7 +20,15 @@ export type IconName =
   | "file"
   | "alert"
   | "trash"
-  | "check";
+  | "check"
+  | "cursor"
+  | "underline"
+  | "strike"
+  | "pen"
+  | "rect"
+  | "ellipse"
+  | "arrow"
+  | "textAnnot";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M2.5 7.2 8 2.5l5.5 4.7V13.5a.5.5 0 0 1-.5.5H9.5v-4h-3v4H3a.5.5 0 0 1-.5-.5V7.2Z" />,
@@ -73,6 +81,29 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   trash: <path d="M2.8 4h10.4M6.5 4V2.8a.3.3 0 0 1 .3-.3h2.4a.3.3 0 0 1 .3.3V4M4 4l.7 9a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4M6.6 7v4M9.4 7v4" />,
   check: <path d="M3 8.5 6.5 12 13 4.5" />,
+  cursor: <path d="M4.8 2.8 12.3 8l-4.6.7-1.9 4.3L4.8 2.8Z" />,
+  underline: (
+    <>
+      <path d="M4.5 3.5v3.2a3.5 3.5 0 0 0 7 0V3.5" />
+      <path d="M3 13.5h10" />
+    </>
+  ),
+  strike: (
+    <>
+      <path d="M10.8 5.6c-.7-.9-1.7-1.3-2.8-1.3-1.6 0-2.9.8-2.9 2.1 0 2.7 5.8 1.4 5.8 4.1 0 1.2-1.2 2.1-2.9 2.1-1 0-2-.4-2.8-1.3" />
+      <path d="M2.5 8h11" />
+    </>
+  ),
+  pen: (
+    <>
+      <path d="M11.3 2.7a1 1 0 0 1 1.4 0l.6.6a1 1 0 0 1 0 1.4L6 12l-2.8.8L4 10l7.3-7.3Z" />
+      <path d="M9.8 4.2l2 2" />
+    </>
+  ),
+  rect: <rect x="3" y="4.5" width="10" height="7.5" rx="1" />,
+  ellipse: <ellipse cx="8" cy="8" rx="5.2" ry="3.8" />,
+  arrow: <path d="M2.5 8h9.2M9.3 4.6 12.7 8l-3.4 3.4" />,
+  textAnnot: <path d="M3.5 4.5h9M8 4.5V12.5M6.5 12.5h3" />,
 };
 
 interface IconProps extends SVGProps<SVGSVGElement> {

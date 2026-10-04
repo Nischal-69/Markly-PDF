@@ -7,6 +7,7 @@ import "./styles/toolbar.css";
 import "./styles/viewer.css";
 import "./styles/library.css";
 import "./styles/highlights.css";
+import "./styles/markups.css";
 import "./styles/notes.css";
 
 const rootEl = document.getElementById("root");

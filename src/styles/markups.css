@@ -1,0 +1,266 @@
+/* Markly PDF — freeform annotations: toolbar, shapes, editor, dialog. */
+
+/* ---------- annotation toolbar (in-flow strip under the top toolbar) ---------- */
+
+.markup-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.markup-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.markup-tool:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text);
+}
+
+.markup-tool.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.markup-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border-strong);
+  margin: 0 4px;
+}
+
+.markup-dot {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.markup-dot:hover {
+  transform: scale(1.15);
+}
+
+.markup-dot.is-active {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent);
+}
+
+.markup-width {
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  margin-left: 2px;
+}
+
+/* Crosshair feedback while a draw tool is armed. */
+.pdf-scroll.is-drawing .pdf-page,
+.pdf-scroll.is-drawing .pdf-text-layer,
+.pdf-scroll.is-drawing .pdf-text-layer span {
+  cursor: crosshair;
+}
+
+.pdf-scroll.is-drawing .pdf-text-layer {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- markup shapes (inside .pdf-annotation-layer) ---------- */
+
+.mk {
+  position: absolute;
+}
+
+.mk-underline,
+.mk-strike {
+  pointer-events: none;
+}
+
+.mk-underline-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom-style: solid;
+  border-bottom-color: inherit;
+}
+
+.mk-strike-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: currentColor;
+}
+
+.mk-shape {
+  pointer-events: auto;
+  background: transparent;
+}
+
+.mk-shape.is-selected {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.mk-rect-border {
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.mk-ellipse-border {
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.mk-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mk-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.mk-text-card {
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-left-width: 3px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  padding: 5px 8px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  cursor: pointer;
+}
+
+.mk-text-card.is-selected {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.mk-draft .mk-rect-border,
+.mk-draft .mk-ellipse-border {
+  border-style: dashed;
+}
+
+/* ---------- markup editor popover ---------- */
+
+.mk-editor {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, 8px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  user-select: none;
+  max-width: calc(100vw - 24px);
+  flex-wrap: wrap;
+}
+
+.mk-editor-text {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-basis: 100%;
+}
+
+.mk-editor-text textarea {
+  flex: 1;
+  min-width: 200px;
+  min-height: 52px;
+  resize: vertical;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---------- text annotation dialog ---------- */
+
+.mk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.mk-dialog {
+  width: min(400px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mk-dialog h2 {
+  font-size: 14px;
+}
+
+.mk-dialog textarea {
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+.mk-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

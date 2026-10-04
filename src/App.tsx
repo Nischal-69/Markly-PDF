@@ -4,6 +4,8 @@ import { TopToolbar } from "@/components/layout/TopToolbar";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { Toast } from "@/components/common/Toast";
 import { HighlightEditor } from "@/components/annotations/HighlightEditor";
+import { MarkupEditor, MarkupTextDialog } from "@/components/annotations/MarkupEditor";
+import { MarkupToolbar } from "@/components/annotations/MarkupToolbar";
 import { SelectionToolbar } from "@/components/annotations/SelectionToolbar";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { NotePopup } from "@/components/notes/NoteLayer";
@@ -52,12 +54,15 @@ export default function App() {
       <Sidebar />
       <div className="main">
         <TopToolbar />
+        <MarkupToolbar />
         <ErrorBanner />
         <main className="content">
           {screen === "viewer" ? <PdfViewer /> : <LibraryScreen />}
         </main>
         <SelectionToolbar />
         <HighlightEditor />
+        <MarkupEditor />
+        <MarkupTextDialog />
         <NoteEditor />
         <NotePopup />
         <Toast />
