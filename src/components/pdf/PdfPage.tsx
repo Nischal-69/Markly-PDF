@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   getPage,
   getPageDimensions,
@@ -26,8 +26,13 @@ const FALLBACK_ASPECT = 297 / 210; // A4 portrait until measured.
 /**
  * One PDF page: canvas bitmap + selectable text layer + a reserved
  * annotation-layer slot for Batch 2 (highlights / notes / drawing).
+ *
+ * Memoized: the viewer re-renders on every scroll-synced page change, and
+ * without this each of those renders would re-render all N page slots.
+ * Props are all primitives or stable callbacks, so pages only update on
+ * genuine page/scale/document changes.
  */
-export function PdfPage({
+export const PdfPage = memo(function PdfPage({
   pageNumber,
   scale,
   scrollRoot,
@@ -185,4 +190,4 @@ export function PdfPage({
       )}
     </div>
   );
-}
+});

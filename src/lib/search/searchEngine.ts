@@ -18,6 +18,13 @@ interface CachedPageText {
 let cachedDocKey: string | null = null;
 const textCache = new Map<number, CachedPageText>();
 
+/**
+ * Bumped on document close so in-flight search loops abort promptly
+ * instead of paging a destroyed document to completion. Checked
+ * alongside the store's per-run cancellation flag.
+ */
+let globalGeneration = 0;
+
 /** Switches the cache to a new document (drops stale page texts). */
 export function setSearchDocKey(docKey: string | null): void {
   if (cachedDocKey !== docKey) {
@@ -29,6 +36,16 @@ export function setSearchDocKey(docKey: string | null): void {
 export function clearSearchCache(): void {
   cachedDocKey = null;
   textCache.clear();
+}
+
+/** Abort any in-flight search run (call on document close). */
+export function cancelSearchRuns(): void {
+  globalGeneration += 1;
+}
+
+/** Generation captured by the currently running search loop, if any. */
+export function currentSearchGeneration(): number {
+  return globalGeneration;
 }
 
 /** Raw (non-lowercased) page text, joined from PDF.js text items. */
@@ -94,8 +111,10 @@ export async function searchPagesIncremental(
   isCancelled: () => boolean,
 ): Promise<void> {
   const needle = query.toLowerCase();
+  const generation = globalGeneration;
+  const cancelled = () => isCancelled() || generation !== globalGeneration;
   for (let page = 1; page <= numPages; page += 1) {
-    if (isCancelled()) return;
+    if (cancelled()) return;
     let count = 0;
     try {
       const entry = await fetchPageText(page);
@@ -103,7 +122,7 @@ export async function searchPagesIncremental(
     } catch {
       count = 0;
     }
-    if (isCancelled()) return;
+    if (cancelled()) return;
     onPage({ page, count }, page, numPages);
     // Let paint/input happen; chunked so large PDFs stay interactive.
     if (page % 4 === 0) {

@@ -112,14 +112,17 @@ export async function loadPdfDocument(
   ensurePdfWorker();
   const generation = ++loadGeneration;
 
-  // Copy: PDF.js may detach (transfer) the buffer it is given, so the
-  // retained original and the worker's copy must be distinct buffers.
-  const bytes = new Uint8Array(data.slice(0));
+  // Memory: keep a view onto the caller's buffer for the retained
+  // original, and hand PDF.js a single detachable copy. (An earlier
+  // revision copied twice — 3× resident memory for large files.)
+  // PDF.js may transfer (detach) the buffer it is given, so the two
+  // must never be the same ArrayBuffer.
+  const bytes = new Uint8Array(data);
 
   let doc: PDFDocumentProxy;
   try {
     const task = pdfjsLib.getDocument({
-      data: bytes.slice(),
+      data: data.slice(0),
       cMapUrl: undefined,
       cMapPacked: false,
       useSystemFonts: true,
@@ -171,16 +174,62 @@ export async function getPage(pageNumber: number): Promise<PDFPageProxy> {
   return currentDoc.getPage(pageNumber);
 }
 
+// ---------------------------------------------------------------------------
+// Page measuring. Every PdfPage measures itself on mount so scroll geometry
+// is exact before anything paints. On a 100+ page document that fires all at
+// once and floods the worker while first paint is still pending, so fetches
+// go through a small concurrency queue. Waiters hold no resources and bail
+// out early when the document changed (or closed) underneath them.
+// ---------------------------------------------------------------------------
+
+const DIM_CONCURRENCY = 6;
+
+let dimInFlight = 0;
+const dimQueue: Array<() => void> = [];
+
+function pumpDimQueue(): void {
+  while (dimInFlight < DIM_CONCURRENCY && dimQueue.length > 0) {
+    const run = dimQueue.shift();
+    if (!run) break;
+    dimInFlight += 1;
+    run();
+  }
+}
+
 /** Page size in PDF points at scale 1 (cheap: no rendering involved). */
 export async function getPageDimensions(
   pageNumber: number,
 ): Promise<{ width: number; height: number }> {
-  const page = await getPage(pageNumber);
+  const keyAtCall = currentKey;
+  const generationAtCall = loadGeneration;
+
+  // Wait for a fetch slot. A document switch/close while queued rejects
+  // so stale callers fall back instead of doing wasted work.
+  await new Promise<void>((resolve, reject) => {
+    const run = () => {
+      if (keyAtCall !== currentKey || generationAtCall !== loadGeneration) {
+        dimInFlight = Math.max(0, dimInFlight - 1);
+        pumpDimQueue();
+        reject(new Error("Document changed while measuring."));
+        return;
+      }
+      resolve();
+    };
+    dimQueue.push(run);
+    pumpDimQueue();
+  });
+
   try {
-    const viewport = page.getViewport({ scale: 1 });
-    return { width: viewport.width, height: viewport.height };
+    const page = await getPage(pageNumber);
+    try {
+      const viewport = page.getViewport({ scale: 1 });
+      return { width: viewport.width, height: viewport.height };
+    } finally {
+      page.cleanup();
+    }
   } finally {
-    page.cleanup();
+    dimInFlight = Math.max(0, dimInFlight - 1);
+    pumpDimQueue();
   }
 }
 
@@ -195,6 +244,13 @@ export interface RenderedViewport {
 }
 
 /**
+ * Upper bound on single-canvas device pixels (~4096×4096, ≈64MB RGBA).
+ * Without it, max zoom on a large page allocates 100MB+ bitmaps and can
+ * crash the tab; normal zoom levels never come close to the cap.
+ */
+export const MAX_CANVAS_PIXELS = 16_000_000;
+
+/**
  * Renders a page onto `canvas` at the given scale, honouring the device
  * pixel ratio (capped) so output stays crisp without exploding memory.
  * Returns the active render task so callers can cancel on unmount/zoom.
@@ -205,8 +261,15 @@ export function renderPageToCanvas(
   scale: number,
   maxDpr = 2,
 ): { task: RenderTask; viewport: PageViewport } {
-  const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   const viewport = page.getViewport({ scale });
+  let dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+
+  // Shrink the effective DPR (never the CSS size) when the bitmap would
+  // exceed the pixel budget — e.g. 4× zoom on an A4 page.
+  const devicePixels = viewport.width * dpr * (viewport.height * dpr);
+  if (devicePixels > MAX_CANVAS_PIXELS && devicePixels > 0) {
+    dpr *= Math.sqrt(MAX_CANVAS_PIXELS / devicePixels);
+  }
 
   canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
   canvas.height = Math.max(1, Math.floor(viewport.height * dpr));

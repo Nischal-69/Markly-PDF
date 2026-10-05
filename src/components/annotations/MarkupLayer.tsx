@@ -28,7 +28,13 @@ export const MarkupLayer = memo(function MarkupLayer({
     useShallow((s) => s.markups.filter((m) => m.page === pageNumber)),
   );
   const tool = useMarkupUi((s) => s.tool);
-  const draft = useMarkupUi((s) => s.draft);
+  // Page-scoped draft subscription: freehand drawing replaces the draft on
+  // every mousemove. A plain `s.draft` subscription would re-render every
+  // mounted page per move; scoping keeps identity stable (null) on all
+  // pages except the one being drawn on.
+  const draft = useMarkupUi((s) =>
+    s.draft && s.draft.page === pageNumber ? s.draft : null,
+  );
   const draftColor = useMarkupUi((s) => s.color);
   const draftStroke = useMarkupUi((s) => s.stroke);
   const select = useMarkupUi((s) => s.select);

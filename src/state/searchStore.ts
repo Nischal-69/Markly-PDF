@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  currentSearchGeneration,
   searchPagesIncremental,
   setSearchDocKey,
 } from "@/lib/search/searchEngine";
@@ -104,6 +105,10 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       activeIndex: -1,
     });
     const needle = trimmed;
+    // Also aborts when the document closes mid-run (global generation).
+    const genAtStart = currentSearchGeneration();
+    const isCancelled = () =>
+      get().runId !== myRun || genAtStart !== currentSearchGeneration();
     void (async () => {
       const counts = new Array<number>(numPages).fill(0);
       let total = 0;
@@ -112,8 +117,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         needle,
         numPages,
         (result, done) => {
-          const s = get();
-          if (s.runId !== myRun) return;
+          if (isCancelled()) return;
           counts[result.page - 1] = result.count;
           total += result.count;
           if (result.count > 0 && firstHitPage === null) {
@@ -125,10 +129,9 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
             searchedPages: done,
           });
         },
-        () => get().runId !== myRun,
+        isCancelled,
       );
-      const s = get();
-      if (s.runId !== myRun) return;
+      if (isCancelled()) return;
       const finalTotal = counts.reduce((a, b) => a + b, 0);
       // Auto-select the first match so Enter/prev-next works instantly
       // and the user gets immediate visual feedback.

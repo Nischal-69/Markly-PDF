@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { getPage, renderThumbnailToCanvas } from "@/lib/pdf/pdfEngine";
 import { usePdfStore } from "@/state/pdfStore";
 import type { RenderTask } from "pdfjs-dist";
@@ -103,7 +103,12 @@ interface ThumbnailPanelProps {
   docKey: string;
 }
 
-export function ThumbnailPanel({ numPages, currentPage, docKey }: ThumbnailPanelProps) {
+/**
+ * Memoized: the parent viewer re-renders on scroll-synced page changes and
+ * zoom; items are individually memoized on `isActive`, so the panel itself
+ * must not rebuild the page list (or re-render all items) on those updates.
+ */
+export const ThumbnailPanel = memo(function ThumbnailPanel({ numPages, currentPage, docKey }: ThumbnailPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollRoot, setScrollRoot] = useState<Element | null>(null);
 
@@ -125,7 +130,10 @@ export function ThumbnailPanel({ numPages, currentPage, docKey }: ThumbnailPanel
     }
   }, [currentPage]);
 
-  const pages = Array.from({ length: numPages }, (_, i) => i + 1);
+  const pages = useMemo(
+    () => Array.from({ length: numPages }, (_, i) => i + 1),
+    [numPages],
+  );
 
   return (
     <aside className="thumb-panel" aria-label="Page thumbnails">
@@ -142,4 +150,4 @@ export function ThumbnailPanel({ numPages, currentPage, docKey }: ThumbnailPanel
       </div>
     </aside>
   );
-}
+});

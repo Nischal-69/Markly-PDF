@@ -5,6 +5,10 @@ import {
   PdfLoadError,
 } from "@/lib/pdf/pdfEngine";
 import {
+  cancelSearchRuns,
+  clearSearchCache,
+} from "@/lib/search/searchEngine";
+import {
   addRecentFile,
   clearRecentFiles,
   listRecentFiles,
@@ -196,6 +200,11 @@ export const usePdfStore = create<PdfState>()((set, get) => ({
   },
 
   closeDocument: () => {
+    // Release everything the document held: abort in-flight search loops
+    // (they would otherwise page a destroyed document to completion) and
+    // drop cached page texts so a large PDF's strings don't linger.
+    cancelSearchRuns();
+    clearSearchCache();
     void closePdfDocument().catch(() => undefined);
     set({
       status: "idle",
