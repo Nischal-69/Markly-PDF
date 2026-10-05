@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PdfPage } from "./PdfPage";
 import { ThumbnailPanel } from "./ThumbnailPanel";
+import { SearchBar } from "@/components/search/SearchBar";
 import { Icon } from "@/components/icons/Icon";
 import {
   captureSelection,
@@ -13,11 +14,20 @@ import { useHighlightStore } from "@/state/highlightStore";
 import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
 import { useMarkupStore } from "@/state/markupStore";
 import { isTextMarkupTool, useMarkupUi } from "@/state/markupUi";
+import { useBookmarkStore } from "@/state/bookmarkStore";
+import { useSearchStore } from "@/state/searchStore";
 import { useNoteUi } from "@/state/noteUi";
 import { usePdfStore } from "@/state/pdfStore";
 
 const PAGE_GAP = 16;
 const WHEEL_ZOOM_THROTTLE_MS = 80;
+/** Quiet window after a jump: the target page wins over scroll-sync. */
+const NAV_SETTLE_MS = 700;
+/** Interval between jump re-assertions while layout settles. */
+const NAV_REASSERT_MS = 120;
+
+/** Last document the viewer scrolled to top for (see remount note below). */
+let topScrolledForDocKey: string | null = null;
 
 function formatProgress(progress: number | null): string {
   if (progress === null) return "Loading PDF…";
@@ -99,6 +109,21 @@ export function PdfViewer() {
     };
   }, [docId]);
 
+  // Batch 7: search state follows the open document; bookmarks load once
+  // and persist across documents (flat list, filtered per doc).
+  const resetSearch = useSearchStore((s) => s.resetForDoc);
+  useEffect(() => {
+    if (docKey) resetSearch(docKey, usePdfStore.getState().numPages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docKey]);
+  useEffect(() => {
+    resetSearch(usePdfStore.getState().docKey, numPages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numPages]);
+  useEffect(() => {
+    if (!useBookmarkStore.getState().loaded) useBookmarkStore.getState().load();
+  }, []);
+
   const markupTool = useMarkupUi((s) => s.tool);
   const drawingRef = useRef<{
     page: number;
@@ -110,11 +135,22 @@ export function PdfViewer() {
     [numPages],
   );
 
+  // Page-element registry housekeeping. NOTE: this must NEVER blanket-clear
+  // the map: ref callbacks attach during commit (before passive effects),
+  // so clearing here would wipe freshly registered targets and break every
+  // programmatic jump after a library → viewer remount (the scroll-sync
+  // observer then wins and the view sticks to page 1). Only stale entries
+  // for pages beyond the current document are pruned; same-document
+  // remounts re-register identical refs and are kept as-is.
   useEffect(() => {
     setScrollRoot(scrollRef.current);
-    pageEls.current.clear();
+    const n = usePdfStore.getState().numPages;
+    for (const key of Array.from(pageEls.current.keys())) {
+      if (key < 1 || key > n) pageEls.current.delete(key);
+    }
     setFirstPageSizePt(null);
     prevScaleRef.current = usePdfStore.getState().scale;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey]);
 
   // Track the scroll container size for fit calculations.
@@ -162,7 +198,12 @@ export function PdfViewer() {
     [],
   );
 
-  // Scroll-synced current page: the most visible page wins.
+  // Scroll-synced current page: the most visible page wins — except right
+  // after a programmatic jump, when transient layout shifts (skipped pages
+  // expanding/collapsing under content-visibility) can briefly expose the
+  // wrong page. The jump target wins for a short window; steady-state
+  // scroll tracking resumes automatically afterwards.
+  const suppressSyncUntil = useRef(0);
   useEffect(() => {
     const root = scrollRef.current;
     if (!root || pages.length === 0) return;
@@ -177,6 +218,7 @@ export function PdfViewer() {
         }
         cancelAnimationFrame(raf);
         raf = requestAnimationFrame(() => {
+          if (Date.now() < suppressSyncUntil.current) return;
           let best = -1;
           let bestRatio = 0;
           for (const [page, ratio] of ratios) {
@@ -203,17 +245,71 @@ export function PdfViewer() {
     };
   }, [pages, docKey, setCurrentPage]);
 
-  // Programmatic navigation (toolbar / thumbnails / page box / keyboard).
+  // Marks the start of a programmatic-jump quiet window for the observer.
+  useEffect(() => {
+    if (navToken !== 0) suppressSyncUntil.current = Date.now() + NAV_SETTLE_MS;
+  }, [navToken]);
+
+  // Programmatic navigation (toolbar / thumbnails / page box / keyboard /
+  // bookmarks / notes / search). A single scrollIntoView can undershoot when
+  // skipped pages expand under content-visibility mid-scroll, so the target
+  // is forced visible first and the scroll is re-asserted as layout settles.
   useEffect(() => {
     if (navToken === 0) return;
-    const el = pageEls.current.get(usePdfStore.getState().currentPage);
-    el?.scrollIntoView({ behavior: "auto", block: "start" });
+    const token = navToken;
+    const jump = () => {
+      const page = usePdfStore.getState().currentPage;
+      const el = pageEls.current.get(page);
+      if (!el) return;
+      // Force real geometry for the target before measuring the jump.
+      const slot = el.closest(".pdf-page-slot") as HTMLElement | null;
+      if (slot) slot.style.contentVisibility = "visible";
+      el.scrollIntoView({ behavior: "auto", block: "start" });
+      return slot;
+    };
+    const firstSlot = jump();
+    // Re-assert twice while layout settles; bail on a newer navigation.
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      if (usePdfStore.getState().navToken !== token) {
+        window.clearInterval(timer);
+        return;
+      }
+      attempts += 1;
+      const slot = jump();
+      if (attempts >= 2) {
+        window.clearInterval(timer);
+        // Restore skipping for jump targets (keeps large PDFs light); the
+        // first slot reference is released here as well.
+        for (const s of [firstSlot, slot]) {
+          if (s) s.style.contentVisibility = "";
+        }
+      }
+    }, NAV_REASSERT_MS);
+    return () => {
+      window.clearInterval(timer);
+      if (firstSlot) firstSlot.style.contentVisibility = "";
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navToken]);
 
   // Fresh document → start at the top.
+  // Module-level (deliberately NOT a ref): remounts create fresh refs, yet
+  // a same-document remount (library → viewer) must NOT reset the scroll —
+  // jumps issued before the remount (bookmarks / notes / search) already
+  // set the target page, and this effect runs AFTER the nav effect, so an
+  // unconditional scrollTo(top) would clobber every such jump and strand
+  // the view on page 1. New documents scroll to top; remounts restore the
+  // current page instead.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    if (topScrolledForDocKey !== docKey) {
+      topScrolledForDocKey = docKey;
+      scrollRef.current?.scrollTo({ top: 0 });
+    } else {
+      const el = pageEls.current.get(usePdfStore.getState().currentPage);
+      el?.scrollIntoView({ behavior: "auto", block: "start" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey]);
 
   // --- Markup drawing + text selection → toolbars / editors ------------
@@ -484,10 +580,34 @@ export function PdfViewer() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       const store = usePdfStore.getState();
+      const search = useSearchStore.getState();
       if (e.key === "Escape") {
+        // Close search first so Esc reliably exits one layer at a time.
+        if (search.isOpen) {
+          search.close();
+          return;
+        }
         useHighlightUi.getState().closeAll();
         useNoteUi.getState().closeAll();
         useMarkupUi.getState().closeAll();
+        return;
+      }
+      // In-document search navigation works even from the search box.
+      if (e.key === "F3") {
+        if (store.screen !== "viewer") return;
+        e.preventDefault();
+        if (e.shiftKey) search.prev();
+        else search.next();
+        return;
+      }
+      // Search + bookmark shortcuts work even when an input is focused
+      // (except browser-reserved keys handled below by the editable guard).
+      const earlyMod = e.ctrlKey || e.metaKey;
+      if (earlyMod && (e.key === "f" || e.key === "F")) {
+        if (store.screen !== "viewer") return;
+        // Real in-document search (Batch 7): opens the floating bar.
+        e.preventDefault();
+        search.open();
         return;
       }
       if (store.screen !== "viewer" || isEditable(e.target)) return;
@@ -505,10 +625,11 @@ export function PdfViewer() {
         usePdfStore.getState().setScale(1);
         return;
       }
-      if (mod && (e.key === "f" || e.key === "F")) {
-        // Placeholder: real in-document search lands in a later batch.
+      if (mod && (e.key === "d" || e.key === "D")) {
+        // Bookmark the current page (Batch 7). Prevent the browser's
+        // own bookmark dialog.
         e.preventDefault();
-        store.notify("PDF search is coming in a later batch.");
+        useBookmarkStore.getState().toggleCurrentPage();
         return;
       }
       if (mod && (e.key === "s" || e.key === "S")) {
@@ -599,6 +720,7 @@ export function PdfViewer() {
 
   return (
     <div ref={areaRef} className="viewer-area">
+      <SearchBar />
       {showThumbnails && (
         <ThumbnailPanel
           numPages={numPages}

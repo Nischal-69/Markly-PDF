@@ -64,9 +64,11 @@ export const SearchLayer = memo(function SearchLayer({
   }
 
   useEffect(() => {
+    // No query → no boxes, no observers, zero per-page cost. This keeps
+    // the layer free for large PDFs until search is actually used.
     if (!needle) {
       setHits([]);
-      return;
+      return undefined;
     }
     let disposed = false;
     let raf = 0;

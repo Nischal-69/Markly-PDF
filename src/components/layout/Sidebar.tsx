@@ -2,11 +2,11 @@ import { Logo } from "@/components/branding/Logo";
 import { Icon, type IconName } from "@/components/icons/Icon";
 import { usePdfStore, type SidebarView } from "@/state/pdfStore";
 
-const NAV: Array<{ id: SidebarView; label: string; icon: IconName; soon?: boolean }> = [
+const NAV: Array<{ id: SidebarView; label: string; icon: IconName }> = [
   { id: "home", label: "Home", icon: "home" },
   { id: "recent", label: "Recent", icon: "recent" },
   { id: "notes", label: "Notes", icon: "note" },
-  { id: "bookmarks", label: "Bookmarks", icon: "bookmark", soon: true },
+  { id: "bookmarks", label: "Bookmarks", icon: "bookmark" },
 ];
 
 export function Sidebar() {
@@ -31,11 +31,10 @@ export function Sidebar() {
               className={`sidebar-item${active ? " is-active" : ""}`}
               onClick={() => setSidebarView(item.id)}
               aria-current={active ? "page" : undefined}
-              title={item.soon ? `${item.label} — coming soon` : item.label}
+              title={item.label}
             >
               <Icon name={item.icon} size={17} />
               <span className="sidebar-item-label">{item.label}</span>
-              {item.soon && <span className="soon-chip">Soon</span>}
             </button>
           );
         })}

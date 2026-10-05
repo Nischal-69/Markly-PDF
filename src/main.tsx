@@ -9,6 +9,8 @@ import "./styles/library.css";
 import "./styles/highlights.css";
 import "./styles/markups.css";
 import "./styles/notes.css";
+import "./styles/search.css";
+import "./styles/bookmarks.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Markly PDF: #root element is missing.");

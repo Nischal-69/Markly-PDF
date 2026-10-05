@@ -3,6 +3,8 @@ import { Icon } from "@/components/icons/Icon";
 import { openPdfFromDisk, saveCurrentPdfCopy } from "@/lib/files/fileHandling";
 import { currentDocId } from "@/lib/annotations/docId";
 import { MAX_SCALE, MIN_SCALE, usePdfStore } from "@/state/pdfStore";
+import { useBookmarkStore } from "@/state/bookmarkStore";
+import { useSearchStore } from "@/state/searchStore";
 import { useNoteUi } from "@/state/noteUi";
 
 function formatZoom(scale: number): string {
@@ -31,6 +33,10 @@ export function TopToolbar() {
   const toggleThumbnails = usePdfStore((s) => s.toggleThumbnails);
   const requestFullscreen = usePdfStore((s) => s.requestFullscreen);
   const notify = usePdfStore((s) => s.notify);
+  const openSearch = useSearchStore((s) => s.open);
+  const searchOpen = useSearchStore((s) => s.isOpen);
+  const toggleBookmark = useBookmarkStore((s) => s.toggleCurrentPage);
+  const bookmarks = useBookmarkStore((s) => s.bookmarks);
 
   const [opening, setOpening] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,6 +45,9 @@ export function TopToolbar() {
 
   const inViewer = screen === "viewer";
   const busy = status === "loading";
+  const docId = currentDocId();
+  const pageBookmarked =
+    inViewer && docId ? bookmarks.some((b) => b.docId === docId && b.page === currentPage) : false;
 
   // Keep the page box in sync while the user is not editing it.
   useEffect(() => {
@@ -219,6 +228,38 @@ export function TopToolbar() {
         </button>
 
         <span className="toolbar-sep" />
+
+        <button
+          type="button"
+          className={`btn btn-icon${searchOpen && inViewer ? " is-active" : ""}`}
+          onClick={openSearch}
+          disabled={!inViewer}
+          title="Search in PDF (Ctrl+F)"
+          aria-label="Search in PDF"
+          aria-pressed={searchOpen && inViewer}
+        >
+          <Icon name="search" size={15} />
+        </button>
+
+        <button
+          type="button"
+          className={`btn btn-icon${pageBookmarked ? " is-active" : ""}`}
+          onClick={toggleBookmark}
+          disabled={!inViewer}
+          title={
+            pageBookmarked
+              ? `Remove bookmark for page ${currentPage} (Ctrl+D)`
+              : `Bookmark page ${currentPage} (Ctrl+D)`
+          }
+          aria-label={
+            pageBookmarked
+              ? `Remove bookmark for page ${currentPage}`
+              : `Bookmark page ${currentPage}`
+          }
+          aria-pressed={pageBookmarked}
+        >
+          <Icon name="bookmark" size={15} />
+        </button>
 
         <button
           type="button"

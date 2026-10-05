@@ -12,10 +12,11 @@ import { NotePopup } from "@/components/notes/NoteLayer";
 import { NotesPanel } from "@/components/notes/NotesPanel";
 import { HomeScreen } from "@/components/library/HomeScreen";
 import { RecentScreen } from "@/components/library/RecentScreen";
-import { ComingSoon } from "@/components/library/ComingSoon";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
+import { BookmarksPanel } from "@/components/bookmarks/BookmarksPanel";
 import { usePdfStore } from "@/state/pdfStore";
 import { useNoteStore } from "@/state/noteStore";
+import { useBookmarkStore } from "@/state/bookmarkStore";
 
 function LibraryScreen() {
   const sidebarView = usePdfStore((s) => s.sidebarView);
@@ -26,13 +27,7 @@ function LibraryScreen() {
     case "notes":
       return <NotesPanel />;
     case "bookmarks":
-      return (
-        <ComingSoon
-          icon="bookmark"
-          title="Bookmarks"
-          description="Jump back to bookmarked pages across all your documents. Bookmarks arrive with the annotation batches."
-        />
-      );
+      return <BookmarksPanel />;
     case "home":
     default:
       return <HomeScreen />;
@@ -43,11 +38,13 @@ export default function App() {
   const screen = usePdfStore((s) => s.screen);
   const refreshRecent = usePdfStore((s) => s.refreshRecent);
   const refreshNotes = useNoteStore((s) => s.refresh);
+  const loadBookmarks = useBookmarkStore((s) => s.load);
 
   useEffect(() => {
     refreshRecent();
     void refreshNotes();
-  }, [refreshRecent, refreshNotes]);
+    loadBookmarks();
+  }, [refreshRecent, refreshNotes, loadBookmarks]);
 
   return (
     <div className="app">

@@ -28,7 +28,8 @@ export type IconName =
   | "rect"
   | "ellipse"
   | "arrow"
-  | "textAnnot";
+  | "textAnnot"
+  | "search";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M2.5 7.2 8 2.5l5.5 4.7V13.5a.5.5 0 0 1-.5.5H9.5v-4h-3v4H3a.5.5 0 0 1-.5-.5V7.2Z" />,
@@ -104,6 +105,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ellipse: <ellipse cx="8" cy="8" rx="5.2" ry="3.8" />,
   arrow: <path d="M2.5 8h9.2M9.3 4.6 12.7 8l-3.4 3.4" />,
   textAnnot: <path d="M3.5 4.5h9M8 4.5V12.5M6.5 12.5h3" />,
+  search: (
+    <>
+      <circle cx="7" cy="7" r="4.2" />
+      <path d="M10.2 10.2 13.5 13.5" />
+    </>
+  ),
 };
 
 interface IconProps extends SVGProps<SVGSVGElement> {

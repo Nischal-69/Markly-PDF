@@ -138,10 +138,13 @@ test("fit page, keyboard navigation, ctrl+wheel zoom, search placeholder", async
   });
   await expect(zoomLabel).not.toHaveText(before, { timeout: 10_000 });
 
-  // Ctrl+F shows the search placeholder toast instead of browser find.
+  // Ctrl+F opens the in-document search bar instead of browser find.
   await page.keyboard.press("Control+f");
-  await expect(page.getByText("PDF search is coming in a later batch.")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("search", { name: "Search in PDF" })).toBeVisible({ timeout: 10_000 });
   await page.screenshot({ path: "tests/screenshots/06-keyboard.png" });
+  // Esc closes the search bar again.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("search", { name: "Search in PDF" })).toHaveCount(0);
 });
 
 test("save a copy downloads the PDF", async ({ page }) => {

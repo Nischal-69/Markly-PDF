@@ -8,6 +8,7 @@ import { buildTextLayer } from "@/lib/pdf/textLayer";
 import { AnnotationLayer } from "@/components/annotations/AnnotationLayer";
 import { MarkupLayer } from "@/components/annotations/MarkupLayer";
 import { NoteLayer } from "@/components/notes/NoteLayer";
+import { SearchLayer } from "@/components/search/SearchLayer";
 import type { PDFPageProxy, RenderTask } from "pdfjs-dist";
 
 interface PdfPageProps {
@@ -167,6 +168,7 @@ export function PdfPage({
         <AnnotationLayer pageNumber={pageNumber} scale={scale} />
         <MarkupLayer pageNumber={pageNumber} scale={scale} />
         <NoteLayer pageNumber={pageNumber} scale={scale} />
+        <SearchLayer pageNumber={pageNumber} scale={scale} docKey={docKey} />
       </div>
       {!nearViewport && !renderError && <div className="pdf-page-skeleton" />}
       {renderError && (
