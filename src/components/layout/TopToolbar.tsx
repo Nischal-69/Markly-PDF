@@ -135,6 +135,8 @@ export function TopToolbar() {
           <span>{opening || busy ? "Opening…" : "Open PDF"}</span>
         </button>
 
+        <span className="toolbar-sep" aria-hidden="true" />
+
         <button
           type="button"
           className="btn btn-icon"
@@ -142,6 +144,7 @@ export function TopToolbar() {
           disabled={!inViewer || workingSave || saveBusy || isExporting || status !== "ready"}
           title="Save project (Ctrl+S)"
           aria-label="Save project"
+          aria-keyshortcuts="Control+s"
         >
           <Icon name="save" size={15} />
         </button>
@@ -303,6 +306,7 @@ export function TopToolbar() {
           title="Search in PDF (Ctrl+F)"
           aria-label="Search in PDF"
           aria-pressed={searchOpen && inViewer}
+          aria-keyshortcuts="Control+f"
         >
           <Icon name="search" size={15} />
         </button>

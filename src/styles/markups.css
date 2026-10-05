@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 5px 12px;
+  padding: 4px 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   user-select: none;
@@ -29,7 +29,7 @@
 }
 
 .markup-tool:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--hover-wash);
   color: var(--text);
 }
 
@@ -53,10 +53,20 @@
   border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 50%;
   cursor: pointer;
+  flex: none;
+}
+
+[data-theme="dark"] .markup-dot {
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .markup-dot:hover {
-  transform: scale(1.15);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--text-sub);
+}
+
+.markup-dot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .markup-dot.is-active {
@@ -72,6 +82,7 @@
   font-size: 12px;
   color: var(--text);
   margin-left: 2px;
+  padding: 0 4px;
 }
 
 /* Crosshair feedback while a draw tool is armed. */
@@ -161,7 +172,7 @@
   border: 1px solid var(--border-strong);
   border-left-width: 3px;
   border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-popover);
   padding: 5px 8px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -187,12 +198,12 @@
   transform: translate(-50%, 8px);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 4px;
+  padding: 6px 8px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
   user-select: none;
   max-width: calc(100vw - 24px);
   flex-wrap: wrap;
@@ -229,15 +240,15 @@
   align-items: flex-start;
   justify-content: center;
   padding: 12vh 16px 16px;
-  background: rgba(0, 0, 0, 0.32);
+  background: var(--overlay);
 }
 
 .mk-dialog {
   width: min(400px, 100%);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  box-shadow: var(--shadow-dialog);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -257,6 +268,12 @@
   background: var(--surface);
   color: var(--text);
   resize: vertical;
+}
+
+.mk-dialog textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
 }
 
 .mk-dialog-actions {

@@ -32,20 +32,22 @@
   z-index: 60;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 8px 7px 12px;
+  gap: 4px;
+  padding: 6px 6px 6px 10px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
   user-select: none;
 }
 
 .hl-toolbar-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--text-sub);
-  margin-right: 2px;
+  margin-right: 4px;
 }
 
 .hl-dot {
@@ -55,32 +57,42 @@
   border: 1px solid rgba(0, 0, 0, 0.25);
   border-radius: 50%;
   cursor: pointer;
+  flex: none;
+}
+
+[data-theme="dark"] .hl-dot {
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .hl-dot:hover {
-  transform: scale(1.15);
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--text-sub);
 }
 
+.hl-dot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .hl-dot.is-active {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent);
 }
 
 .hl-toolbar-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text-sub);
   cursor: pointer;
+  flex: none;
 }
 
 .hl-toolbar-close:hover {
-  background: rgba(0, 0, 0, 0.07);
+  background: var(--hover-wash);
   color: var(--text);
 }
 
@@ -92,12 +104,12 @@
   transform: translate(-50%, 8px);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 4px;
+  padding: 6px 8px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
   user-select: none;
 }
 
@@ -105,7 +117,8 @@
   width: 1px;
   height: 20px;
   background: var(--border-strong);
-  margin: 0 2px;
+  margin: 0 4px;
+  flex: none;
 }
 
 .hl-delete {
@@ -123,6 +136,6 @@
 
 .hl-delete:hover {
   background: var(--danger-soft);
-  border-color: #f5c6c2;
+  border-color: var(--border-strong);
   color: var(--danger);
 }

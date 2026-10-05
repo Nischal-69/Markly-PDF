@@ -5,7 +5,7 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 0 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -14,7 +14,7 @@
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -27,14 +27,21 @@
   align-items: center;
   gap: 7px;
   min-width: 0;
-  max-width: 320px;
-  padding: 0 4px 0 10px;
-  border-left: 1px solid var(--border);
+  max-width: 300px;
+  margin-left: 6px;
+  padding: 4px 4px 4px 12px;
+  border-left: 1px solid var(--border-strong);
   color: var(--text-sub);
+}
+
+.toolbar-doc > svg {
+  flex: none;
+  color: var(--text-faint);
 }
 
 .toolbar-doc-name {
   font-weight: 600;
+  font-size: 12.5px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -53,10 +60,21 @@
   height: 28px;
   text-align: center;
   font: inherit;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
+}
+
+.page-input:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+.page-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
 }
 
 .page-input:disabled {
@@ -68,22 +86,27 @@
   color: var(--text-sub);
   white-space: nowrap;
   min-width: 34px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
 .zoom-label {
   min-width: 52px;
   height: 32px;
   padding: 0 8px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
+  color: var(--text-sub);
   cursor: pointer;
   font-variant-numeric: tabular-nums;
   text-align: center;
+  font-size: 12px;
 }
 
 .zoom-label:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover-wash);
+  color: var(--text);
 }
 
 .zoom-label:disabled {
@@ -95,5 +118,6 @@
   width: 1px;
   height: 22px;
   background: var(--border-strong);
-  margin: 0 2px;
+  margin: 0 4px;
+  flex: none;
 }

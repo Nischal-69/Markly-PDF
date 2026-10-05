@@ -12,13 +12,18 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 6px 6px 6px 10px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-popover);
   color: var(--text-sub);
+}
+
+.search-bar > svg {
+  flex: none;
+  color: var(--text-faint);
 }
 
 .search-input {
@@ -31,6 +36,10 @@
   font: inherit;
   font-size: 13px;
   color: var(--text);
+}
+
+.search-input:hover:not(:disabled) {
+  border-color: var(--text-faint);
 }
 
 .search-input:focus {
@@ -58,6 +67,7 @@
 .search-nav {
   width: 28px;
   height: 28px;
+  flex: none;
 }
 
 .search-nav:disabled {
@@ -66,7 +76,8 @@
 
 /* ---------- search highlight boxes ---------- */
 /* Separate overlay system from .hl highlights: search never writes to
-   highlight storage and never restyles highlight divs. */
+   highlight storage and never restyles highlight divs. Paper stays white
+   in both themes, so these stay fixed. */
 .search-hit {
   position: absolute;
   border-radius: 2px;

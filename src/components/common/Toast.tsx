@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Icon } from "@/components/icons/Icon";
 import { usePdfStore } from "@/state/pdfStore";
 
 const NOTICE_DURATION_MS = 3500;
@@ -23,9 +24,10 @@ export function Toast() {
         type="button"
         className="toast-close"
         onClick={dismissNotice}
+        title="Dismiss notification"
         aria-label="Dismiss notification"
       >
-        ×
+        <Icon name="close" size={12} />
       </button>
     </div>
   );

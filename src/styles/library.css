@@ -20,7 +20,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .home-hero h1 {
@@ -30,7 +30,7 @@
 }
 
 .tagline {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--accent);
 }
@@ -39,12 +39,13 @@
   color: var(--text-sub);
   line-height: 1.55;
   max-width: 440px;
-  margin-bottom: 8px;
+  margin: 2px 0 10px;
+  font-size: 13px;
 }
 
 .home-recent {
   max-width: 640px;
-  margin: 34px auto 0;
+  margin: 32px auto 0;
 }
 
 /* ---------- recent list ---------- */
@@ -60,11 +61,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px 4px;
+  padding: 8px 10px 6px;
 }
 
 .recent-head h2 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -82,7 +83,7 @@
 }
 
 .recent-row:hover {
-  background: rgba(0, 0, 0, 0.035);
+  background: var(--hover-wash);
 }
 
 .recent-main {
@@ -91,7 +92,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -101,8 +102,8 @@
 
 .recent-icon {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -116,11 +117,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .recent-name {
   font-weight: 600;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -134,8 +136,9 @@
   text-overflow: ellipsis;
 }
 
+/* Shared empty state (recent, notes, bookmarks loading + empty). */
 .recent-empty {
-  padding: 34px 20px;
+  padding: 32px 20px;
   text-align: center;
   color: var(--text-sub);
   display: flex;
@@ -145,6 +148,25 @@
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
   background: var(--surface);
+  font-size: 13px;
+}
+
+.recent-empty > svg:first-child {
+  box-sizing: content-box;
+  padding: 9px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.recent-empty > p:first-child,
+.recent-empty > p {
+  color: var(--text-sub);
+}
+
+.recent-empty .muted {
+  font-size: 12px;
 }
 
 /* ---------- coming soon ---------- */
@@ -156,27 +178,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .coming-soon h1 {
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .coming-soon p {
   color: var(--text-sub);
   line-height: 1.55;
+  font-size: 13px;
 }
 
 .coming-soon-icon {
-  width: 60px;
-  height: 60px;
+  width: 52px;
+  height: 52px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 8px;
   background: var(--accent-soft);
   color: var(--accent);
+  margin-bottom: 4px;
 }
 
 .soon-chip-large {

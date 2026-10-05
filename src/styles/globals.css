@@ -1,5 +1,7 @@
 /* Markly PDF — global tokens + base. Windows productivity-app look:
-   Segoe UI type, flat surfaces, hairline borders, single brand accent. */
+   Segoe UI type, flat surfaces, hairline borders, single brand accent.
+   Theming: every surface resolves through variables; `data-theme="dark"`
+   on <html> switches the whole chrome (PDF paper stays white). */
 
 :root {
   --accent: #0f6cbd;
@@ -23,9 +25,49 @@
   --danger-soft: #fdecea;
 
   --shadow-page: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 1px rgba(0, 0, 0, 0.12);
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.16);
+  --shadow-dialog: 0 12px 32px rgba(0, 0, 0, 0.24);
+
+  --overlay: rgba(0, 0, 0, 0.32);
+  --hover-wash: rgba(0, 0, 0, 0.05);
+  --chip-bg: rgba(0, 0, 0, 0.07);
+  --toast-bg: #323130;
+  --toast-text: #ffffff;
 
   --radius: 6px;
   --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+[data-theme="dark"] {
+  --accent: #4aa3f0;
+  --accent-hover: #6cb2f3;
+  --accent-pressed: #2b88d8;
+  --accent-soft: rgba(74, 163, 240, 0.16);
+
+  --text: #f3f2f1;
+  --text-sub: #c8c6c4;
+  --text-faint: #a19f9d;
+
+  --surface: #252423;
+  --surface-sub: #1b1a19;
+  --viewer-bg: #11100f;
+  --thumb-bg: #201f1e;
+
+  --border: #323130;
+  --border-strong: #484644;
+
+  --danger: #f1707b;
+  --danger-soft: rgba(209, 52, 56, 0.22);
+
+  --shadow-page: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 1px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-dialog: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  --overlay: rgba(0, 0, 0, 0.6);
+  --hover-wash: rgba(255, 255, 255, 0.07);
+  --chip-bg: rgba(255, 255, 255, 0.12);
+  --toast-bg: #2d2c2b;
+  --toast-text: #f3f2f1;
 }
 
 *,
@@ -44,6 +86,7 @@ body {
   margin: 0;
   font-family: var(--font);
   font-size: 13px;
+  line-height: 1.45;
   color: var(--text);
   background: var(--surface-sub);
   -webkit-font-smoothing: antialiased;
@@ -52,6 +95,27 @@ body {
 
 h1,
 h2,
+h3 {
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
 p {
   margin: 0;
 }
@@ -59,6 +123,56 @@ p {
 button {
   font: inherit;
   color: inherit;
+}
+
+::selection {
+  background: rgba(15, 108, 189, 0.28);
+}
+
+[data-theme="dark"] ::selection {
+  background: rgba(74, 163, 240, 0.4);
+}
+
+/* Thin, theme-aware scrollbars for panels (overlay look, Windows-like). */
+.library-scroll,
+.thumb-list,
+.pdf-scroll,
+.notes-list,
+.bookmarks-list,
+.note-popup {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.library-scroll::-webkit-scrollbar,
+.thumb-list::-webkit-scrollbar,
+.pdf-scroll::-webkit-scrollbar,
+.notes-list::-webkit-scrollbar,
+.bookmarks-list::-webkit-scrollbar,
+.note-popup::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.library-scroll::-webkit-scrollbar-thumb,
+.thumb-list::-webkit-scrollbar-thumb,
+.pdf-scroll::-webkit-scrollbar-thumb,
+.notes-list::-webkit-scrollbar-thumb,
+.bookmarks-list::-webkit-scrollbar-thumb,
+.note-popup::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.library-scroll::-webkit-scrollbar-track,
+.thumb-list::-webkit-scrollbar-track,
+.pdf-scroll::-webkit-scrollbar-track,
+.notes-list::-webkit-scrollbar-track,
+.bookmarks-list::-webkit-scrollbar-track,
+.note-popup::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* ---------- shared buttons ---------- */
@@ -72,14 +186,20 @@ button {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
+  transition: background-color 80ms ease-out, border-color 80ms ease-out;
 }
 
 .btn:hover:not(:disabled) {
   background: var(--surface-sub);
-  border-color: #c8c6c4;
+  border-color: var(--text-faint);
+}
+
+.btn:active:not(:disabled) {
+  background: var(--hover-wash);
 }
 
 .btn:disabled {
@@ -94,6 +214,10 @@ button {
   font-weight: 600;
 }
 
+[data-theme="dark"] .btn-primary {
+  color: #1b1a19;
+}
+
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
@@ -101,6 +225,7 @@ button {
 
 .btn-primary:active:not(:disabled) {
   background: var(--accent-pressed);
+  border-color: var(--accent-pressed);
 }
 
 .btn-large {
@@ -127,7 +252,7 @@ button {
 }
 
 .btn-quiet:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--hover-wash);
   border-color: transparent;
 }
 
@@ -140,7 +265,7 @@ button {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover-wash);
   border-color: transparent;
   color: var(--text);
 }
@@ -149,6 +274,37 @@ button {
   height: 26px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+/* ---------- shared inputs ---------- */
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background: var(--surface-sub);
+  color: var(--text-faint);
+  cursor: default;
+}
+
+select {
+  color: var(--text);
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 11px;
+  font-family: inherit;
+  white-space: nowrap;
 }
 
 /* ---------- toast ---------- */
@@ -161,31 +317,39 @@ button {
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   max-width: min(480px, 90vw);
-  padding: 10px 12px 10px 16px;
-  background: #323130;
-  color: #fff;
+  padding: 9px 10px 9px 14px;
+  background: var(--toast-bg);
+  color: var(--toast-text);
+  border: 1px solid transparent;
   border-radius: 8px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-dialog);
   font-size: 13px;
 }
 
+[data-theme="dark"] .toast {
+  border-color: var(--border-strong);
+}
+
 .toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
   border: 0;
+  border-radius: var(--radius);
   background: transparent;
-  color: #fff;
-  font-size: 16px;
-  line-height: 1;
+  color: inherit;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
   opacity: 0.8;
 }
 
 .toast-close:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--hover-wash);
 }
 
 /* ---------- app frame ---------- */
@@ -218,8 +382,8 @@ button {
   gap: 10px;
   padding: 10px 14px;
   background: var(--danger-soft);
-  border-bottom: 1px solid #f5c6c2;
-  color: #61100f;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text);
 }
 
 .error-banner > svg {
@@ -241,16 +405,16 @@ button {
 
 .error-details summary {
   cursor: pointer;
-  color: #8a1c1a;
+  color: var(--text-sub);
 }
 
 .error-details code {
   display: block;
   margin-top: 4px;
   padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid #f5c6c2;
-  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 11px;
@@ -265,7 +429,7 @@ button {
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(15, 108, 189, 0.25);
+  border: 2px solid var(--border-strong);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: markly-spin 0.8s linear infinite;
@@ -280,5 +444,23 @@ button {
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+
+.pdf-text-layer span:focus-visible {
+  outline-offset: -2px;
+}
+
+/* No entrance/motion effects for users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .spinner {
+    border-top-color: var(--border-strong);
+  }
 }

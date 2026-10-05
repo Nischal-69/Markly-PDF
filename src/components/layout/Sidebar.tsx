@@ -1,5 +1,6 @@
 import { Logo } from "@/components/branding/Logo";
 import { Icon, type IconName } from "@/components/icons/Icon";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { usePdfStore, type SidebarView } from "@/state/pdfStore";
 
 const NAV: Array<{ id: SidebarView; label: string; icon: IconName }> = [
@@ -50,7 +51,8 @@ export function Sidebar() {
       )}
 
       <div className="sidebar-footer">
-        <span>Markly PDF v0.1.0</span>
+        <ThemeSwitcher />
+        <span className="sidebar-version">Markly PDF v0.1.0</span>
         <span className="sidebar-offline">
           <Icon name="check" size={12} /> Works offline
         </span>

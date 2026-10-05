@@ -164,7 +164,8 @@ export function NoteEditor() {
 
         {error && (
           <div className="note-error" role="alert">
-            {error}
+            <Icon name="alert" size={14} />
+            <span>{error}</span>
           </div>
         )}
 

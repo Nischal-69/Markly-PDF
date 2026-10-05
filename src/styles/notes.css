@@ -16,11 +16,17 @@
   border-radius: 11px;
   background: #fff7e6;
   color: #8a4d00;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-popover);
   cursor: pointer;
   pointer-events: auto;
   /* Offset keeps the pin beside the anchor, never over the text. */
   transform: translate(2px, -50%);
+}
+
+[data-theme="dark"] .pdf-annotation-layer .note-pin {
+  border-color: #c08a2d;
+  background: #43351a;
+  color: #ffd88a;
 }
 
 .note-pin:hover {
@@ -28,21 +34,24 @@
   border-color: #8a4d00;
 }
 
+[data-theme="dark"] .note-pin:hover {
+  background: #54431f;
+  border-color: #ffd88a;
+}
+
 .note-pin.is-open {
-  background: #0f6cbd;
-  border-color: #0f6cbd;
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
-.note-pin.is-focused {
-  outline: 2px solid #0f6cbd;
-  outline-offset: 2px;
-  animation: note-pulse 1.2s ease-in-out 2;
+[data-theme="dark"] .note-pin.is-open {
+  color: #1b1a19;
 }
 
-@keyframes note-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(15, 108, 189, 0.5); }
-  50% { box-shadow: 0 0 0 6px rgba(15, 108, 189, 0); }
+.note-pin.is-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .note-pin-page {
@@ -61,15 +70,15 @@
   align-items: flex-start;
   justify-content: center;
   padding: 8vh 16px 16px;
-  background: rgba(0, 0, 0, 0.32);
+  background: var(--overlay);
 }
 
 .note-dialog {
   width: min(480px, 100%);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  box-shadow: var(--shadow-dialog);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -96,7 +105,7 @@
   padding: 8px 10px;
   border-left: 3px solid var(--accent);
   background: var(--accent-soft);
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
   font-size: 12px;
   color: var(--text-sub);
   font-style: italic;
@@ -130,6 +139,11 @@
   resize: vertical;
 }
 
+.note-field input:hover:not(:disabled),
+.note-field textarea:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
 .note-field input:focus,
 .note-field textarea:focus {
   outline: 2px solid var(--accent);
@@ -138,8 +152,21 @@
 }
 
 .note-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 12px;
+  line-height: 1.45;
   color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+
+.note-error > svg {
+  flex: none;
+  margin-top: 1px;
 }
 
 .note-dialog-actions {
@@ -161,8 +188,8 @@
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+  border-radius: 8px;
+  box-shadow: var(--shadow-dialog);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -230,7 +257,7 @@
 
 .btn-danger:hover:not(:disabled) {
   background: var(--danger-soft);
-  border-color: #f5c6c2;
+  border-color: var(--border-strong);
 }
 
 /* --- notes panel --- */
@@ -249,7 +276,7 @@
 }
 
 .notes-head h2 {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .notes-search {
@@ -261,6 +288,17 @@
   background: var(--surface);
   font: inherit;
   font-size: 12px;
+  color: var(--text);
+}
+
+.notes-search:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+.notes-search:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
 }
 
 .notes-filters {
@@ -329,7 +367,7 @@
 }
 
 .note-row:hover {
-  border-color: #c8c6c4;
+  border-color: var(--text-faint);
 }
 
 .note-main {
@@ -363,6 +401,11 @@
   font-size: 11px;
   color: var(--text-sub);
   max-width: 100%;
+}
+
+.note-row-meta > svg {
+  flex: none;
+  color: var(--text-faint);
 }
 
 .note-row-doc {
