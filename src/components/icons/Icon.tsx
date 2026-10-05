@@ -29,6 +29,8 @@ export type IconName =
   | "ellipse"
   | "arrow"
   | "textAnnot"
+  | "saveAs"
+  | "export"
   | "search";
 
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -105,6 +107,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ellipse: <ellipse cx="8" cy="8" rx="5.2" ry="3.8" />,
   arrow: <path d="M2.5 8h9.2M9.3 4.6 12.7 8l-3.4 3.4" />,
   textAnnot: <path d="M3.5 4.5h9M8 4.5V12.5M6.5 12.5h3" />,
+  saveAs: (
+    <>
+      <path d="M3 3h8l2 2v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M5 3v3.5h5V3M5.5 13.5v-4h5v4" />
+      <path d="M11.5 13.5h2" />
+    </>
+  ),
+  export: (
+    <>
+      <path d="M8 10V2.5M5.5 5 8 2.5 10.5 5" />
+      <path d="M3 9.5v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3" />
+    </>
+  ),
   search: (
     <>
       <circle cx="7" cy="7" r="4.2" />

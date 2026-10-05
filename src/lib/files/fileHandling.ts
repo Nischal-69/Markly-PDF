@@ -134,7 +134,105 @@ export async function openPdfFromDisk(): Promise<OpenedPdfInput | null> {
   return pickViaBrowser();
 }
 
-export type SaveResult = "saved" | "cancelled";
+export type SaveResult = "saved" | "cancelled" | "overwrite-aborted";
+
+/** Normalizes a filesystem path for same-file comparison (Windows-safe). */
+export function isSamePath(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase().trim();
+  return norm(a) === norm(b);
+}
+
+/**
+ * Asks the user to explicitly confirm overwriting the original PDF.
+ * Returns true when the user explicitly chooses to overwrite.
+ */
+export function confirmOverwriteOriginal(fileName: string): boolean {
+  try {
+    return window.confirm(
+      `You chose the original file location for "${fileName}".\n\nOverwrite the original PDF? Choose OK to overwrite, or Cancel to pick a different location.`,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+}
+
+/**
+ * Writes raw bytes to a user-chosen location (Tauri save dialog, browser
+ * download fallback). When `guardOriginalPath` is set and the user picks
+ * that exact location, an explicit overwrite confirmation is required —
+ * cancelling returns "overwrite-aborted" and writes nothing.
+ */
+export async function saveBytesToLocation(
+  suggestedName: string,
+  bytes: Uint8Array,
+  mimeType: string,
+  dialogTitle: string,
+  dialogFilter: { name: string; extensions: string[] },
+  guardOriginalPath?: string | null,
+): Promise<{ result: SaveResult; path: string | null }> {
+  const fileName = suggestedName || "document";
+  if (isTauriRuntime()) {
+    try {
+      const target = await saveDialog({
+        defaultPath: fileName,
+        title: dialogTitle,
+        filters: [dialogFilter],
+      });
+      if (!target) return { result: "cancelled", path: null };
+      if (guardOriginalPath && isSamePath(target, guardOriginalPath)) {
+        if (!confirmOverwriteOriginal(fileName)) {
+          return { result: "overwrite-aborted", path: target };
+        }
+      }
+      await writeFile(target, bytes);
+      return { result: "saved", path: target };
+    } catch {
+      // Native save unavailable — fall through to browser download.
+    }
+  }
+  downloadBlob(
+    new Blob([bytes.slice().buffer as ArrayBuffer], { type: mimeType }),
+    fileName,
+  );
+  return { result: "saved", path: null };
+}
+
+/**
+ * Writes bytes to a previously chosen project path without a dialog
+ * (Save). Falls back to a dialog when no path is known. The original PDF
+ * is still guarded: overwriting it requires explicit confirmation.
+ */
+export async function writeBytesToKnownPath(
+  targetPath: string,
+  bytes: Uint8Array,
+  guardOriginalPath?: string | null,
+): Promise<SaveResult> {
+  if (!isTauriRuntime()) {
+    // Browser has no persistent path — caller should use saveBytesToLocation.
+    throw new Error("No saved location in the browser. Use Save As.");
+  }
+  if (guardOriginalPath && isSamePath(targetPath, guardOriginalPath)) {
+    const base = targetPath.split(/[\\/]/).pop() ?? targetPath;
+    if (!confirmOverwriteOriginal(base)) return "overwrite-aborted";
+  }
+  await writeFile(targetPath, bytes);
+  return "saved";
+}
 
 /**
  * Saves a copy of the currently loaded PDF (original bytes, unmodified).

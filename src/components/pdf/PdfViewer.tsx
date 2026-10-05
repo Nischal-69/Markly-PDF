@@ -8,7 +8,6 @@ import {
   clearDomSelection,
   getSelectionAnchorRect,
 } from "@/lib/annotations/selection";
-import { saveCurrentPdfCopy } from "@/lib/files/fileHandling";
 import { makeRecentId } from "@/lib/storage/recentFiles";
 import { useHighlightStore } from "@/state/highlightStore";
 import { anchorFromRect, useHighlightUi } from "@/state/highlightUi";
@@ -18,6 +17,7 @@ import { useBookmarkStore } from "@/state/bookmarkStore";
 import { useSearchStore } from "@/state/searchStore";
 import { useNoteUi } from "@/state/noteUi";
 import { usePdfStore } from "@/state/pdfStore";
+import { useSaveStore } from "@/state/saveStore";
 
 const PAGE_GAP = 16;
 const WHEEL_ZOOM_THROTTLE_MS = 80;
@@ -634,15 +634,17 @@ export function PdfViewer() {
       }
       if (mod && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
-        const name = store.fileName;
-        if (!name || store.status !== "ready") return;
-        void saveCurrentPdfCopy(name)
-          .then((result) => {
-            if (result === "saved") store.notify(`Saved a copy of ${name}.`);
-          })
-          .catch(() =>
-            store.notify("Could not save the PDF. Please try again."),
-          );
+        if (store.screen !== "viewer" || store.status !== "ready") return;
+        // Batch 8: Ctrl+S = Save project, Ctrl+Shift+S = Save As.
+        // The legacy "Save a copy" stays on its toolbar button.
+        if (e.shiftKey) void useSaveStore.getState().saveProjectAs();
+        else void useSaveStore.getState().saveProject();
+        return;
+      }
+      if (mod && (e.key === "e" || e.key === "E")) {
+        e.preventDefault();
+        if (store.screen !== "viewer" || store.status !== "ready") return;
+        void useSaveStore.getState().exportPdf();
         return;
       }
       if (mod) return;

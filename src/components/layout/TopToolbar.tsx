@@ -4,6 +4,7 @@ import { openPdfFromDisk, saveCurrentPdfCopy } from "@/lib/files/fileHandling";
 import { currentDocId } from "@/lib/annotations/docId";
 import { MAX_SCALE, MIN_SCALE, usePdfStore } from "@/state/pdfStore";
 import { useBookmarkStore } from "@/state/bookmarkStore";
+import { useSaveStore } from "@/state/saveStore";
 import { useSearchStore } from "@/state/searchStore";
 import { useNoteUi } from "@/state/noteUi";
 
@@ -37,9 +38,15 @@ export function TopToolbar() {
   const searchOpen = useSearchStore((s) => s.isOpen);
   const toggleBookmark = useBookmarkStore((s) => s.toggleCurrentPage);
   const bookmarks = useBookmarkStore((s) => s.bookmarks);
+  const saveProject = useSaveStore((s) => s.saveProject);
+  const saveProjectAs = useSaveStore((s) => s.saveProjectAs);
+  const exportPdf = useSaveStore((s) => s.exportPdf);
+  const saveBusy = useSaveStore((s) => s.saveBusy);
+  const isExporting = useSaveStore((s) => s.isExporting);
 
   const [opening, setOpening] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingCopy, setSavingCopy] = useState(false);
+  const [workingSave, setWorkingSave] = useState(false);
   const [pageDraft, setPageDraft] = useState<string | null>(null);
   const pageInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,17 +74,43 @@ export function TopToolbar() {
     }
   };
 
-  const handleSave = async () => {
-    if (saving || !fileName) return;
-    setSaving(true);
+  const handleSaveCopy = async () => {
+    if (savingCopy || !fileName) return;
+    setSavingCopy(true);
     try {
       const result = await saveCurrentPdfCopy(fileName);
       if (result === "saved") notify(`Saved a copy of ${fileName}.`);
     } catch {
       notify("Could not save the PDF. Please try again.");
     } finally {
-      setSaving(false);
+      setSavingCopy(false);
     }
+  };
+
+  /** Batch 8: Save / Save As write the .markly.json project (never the PDF). */
+  const handleSave = async () => {
+    if (workingSave || saveBusy || isExporting) return;
+    setWorkingSave(true);
+    try {
+      await saveProject();
+    } finally {
+      setWorkingSave(false);
+    }
+  };
+
+  const handleSaveAs = async () => {
+    if (workingSave || saveBusy || isExporting) return;
+    setWorkingSave(true);
+    try {
+      await saveProjectAs();
+    } finally {
+      setWorkingSave(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (isExporting || saveBusy) return;
+    await exportPdf();
   };
 
   const commitPage = () => {
@@ -106,11 +139,44 @@ export function TopToolbar() {
           type="button"
           className="btn btn-icon"
           onClick={handleSave}
-          disabled={!inViewer || saving || status !== "ready"}
-          title="Save a copy of this PDF (Ctrl+S)"
-          aria-label="Save a copy of this PDF"
+          disabled={!inViewer || workingSave || saveBusy || isExporting || status !== "ready"}
+          title="Save project (Ctrl+S)"
+          aria-label="Save project"
         >
           <Icon name="save" size={15} />
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={handleSaveAs}
+          disabled={!inViewer || workingSave || saveBusy || isExporting || status !== "ready"}
+          title="Save project as (Ctrl+Shift+S)"
+          aria-label="Save project as"
+        >
+          <Icon name="saveAs" size={15} />
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={handleExport}
+          disabled={!inViewer || isExporting || saveBusy || status !== "ready"}
+          title="Export annotated PDF (Ctrl+E)"
+          aria-label="Export annotated PDF"
+        >
+          <Icon name="export" size={15} />
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={handleSaveCopy}
+          disabled={!inViewer || savingCopy || status !== "ready"}
+          title="Save a copy of the original PDF (no annotations)"
+          aria-label="Save a copy of this PDF"
+        >
+          <Icon name="file" size={15} />
         </button>
 
         {inViewer && fileName && (

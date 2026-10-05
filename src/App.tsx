@@ -14,6 +14,7 @@ import { HomeScreen } from "@/components/library/HomeScreen";
 import { RecentScreen } from "@/components/library/RecentScreen";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { BookmarksPanel } from "@/components/bookmarks/BookmarksPanel";
+import { ExportDialog } from "@/components/save/ExportDialog";
 import { usePdfStore } from "@/state/pdfStore";
 import { useNoteStore } from "@/state/noteStore";
 import { useBookmarkStore } from "@/state/bookmarkStore";
@@ -62,6 +63,7 @@ export default function App() {
         <MarkupTextDialog />
         <NoteEditor />
         <NotePopup />
+        <ExportDialog />
         <Toast />
       </div>
     </div>

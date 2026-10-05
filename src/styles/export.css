@@ -1,0 +1,60 @@
+/* Markly PDF — save & export dialog (Batch 8). */
+
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(27, 26, 25, 0.35);
+  padding: 16px;
+}
+
+.export-dialog {
+  width: min(420px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  padding: 18px 20px 16px;
+}
+
+.export-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.export-message {
+  margin: 0 0 12px;
+  color: var(--text-sub);
+  line-height: 1.45;
+}
+
+.export-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-sub);
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+}
+
+.export-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 120ms linear;
+}
+
+.export-dialog .small {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.export-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
