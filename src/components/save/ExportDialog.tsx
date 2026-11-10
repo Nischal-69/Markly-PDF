@@ -24,6 +24,7 @@ export function ExportDialog() {
   const pct = Math.round(Math.min(1, Math.max(0, ratio)) * 100);
   const phaseLabel =
     phase === "load" ? "Reading PDF…"
+    : phase === "summary" ? "Adding notes summary…"
     : phase === "save" ? "Writing file…"
     : total > 0
       ? `Exporting page ${Math.max(1, page)} of ${total}…`
@@ -35,7 +36,7 @@ export function ExportDialog() {
         className="export-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={exportError ? "Export failed" : "Exporting annotated PDF"}
+        aria-label={exportError ? "Export failed" : "Exporting highlighted PDF"}
         aria-busy={isExporting}
       >
         {exportError ? (
@@ -64,7 +65,7 @@ export function ExportDialog() {
           </>
         ) : (
           <>
-            <h2 className="export-title">Exporting annotated PDF</h2>
+            <h2 className="export-title">Exporting highlighted PDF</h2>
             <p className="export-message">{phaseLabel}</p>
             <div
               className="export-bar"

@@ -1,9 +1,11 @@
 /**
  * Batch 8 — annotated PDF export engine.
  *
- * Burns Markly overlays (highlights, underline/strikethrough, drawings,
- * shapes, text annotations, notes) into a copy of the original PDF bytes
- * using pdf-lib, so the result opens in Markly AND any other PDF reader.
+ * Burns Markly overlays into a copy of the original PDF bytes using
+ * pdf-lib, so the result opens in Markly AND any other PDF reader.
+ * The app currently exports highlights and notes; the engine also
+ * supports underline/strikethrough, drawings, shapes and text
+ * annotations for future export scopes.
  *
  * The original file is never mutated: callers pass the loaded bytes and
  * receive brand-new bytes to write to a user-chosen location.
@@ -29,8 +31,8 @@ export interface ExportAnnotations {
 }
 
 export interface ExportProgress {
-  /** load = parsing source, render = burning pages, save = serializing. */
-  phase: "load" | "render" | "save";
+  /** load = parsing source, render = burning pages, summary = notes page, save = serializing. */
+  phase: "load" | "render" | "summary" | "save";
   page: number;
   totalPages: number;
   /** 0..1 overall. */
@@ -316,6 +318,232 @@ function drawWrappedNote(
   }
 }
 
+const SUMMARY_MARGIN = 48;
+const SUMMARY_LINE_HEIGHT = 14;
+const SUMMARY_FOOTER_GAP = 28;
+
+function measureText(font: PDFFont, text: string, size: number): number {
+  try {
+    return font.widthOfTextAtSize(text, size);
+  } catch {
+    // Unsupported glyphs: approximate so wrapping still terminates.
+    return text.length * size * 0.5;
+  }
+}
+
+/** Width-aware wrapping for the notes summary (no truncation). */
+function wrapSummaryText(
+  text: string,
+  font: PDFFont,
+  size: number,
+  maxWidth: number,
+): string[] {
+  const clean = safeText(text).replace(/\r\n?/g, "\n");
+  const lines: string[] = [];
+  for (const paragraph of clean.split("\n")) {
+    const words = paragraph.replace(/[ \t]+/g, " ").trim().split(" ").filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
+    }
+    let current = "";
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (measureText(font, candidate, size) <= maxWidth) {
+        current = candidate;
+        continue;
+      }
+      if (current) lines.push(current);
+      if (measureText(font, word, size) > maxWidth) {
+        let chunk = "";
+        for (const ch of word) {
+          const next = chunk + ch;
+          if (chunk && measureText(font, next, size) > maxWidth) {
+            lines.push(chunk);
+            chunk = ch;
+          } else {
+            chunk = next;
+          }
+        }
+        current = chunk;
+      } else {
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+  }
+  return lines.length > 0 ? lines : [""];
+}
+
+/**
+ * Appends one or more "Notes Summary" pages listing every note, the page
+ * and selected text it belongs to, and the full note content. Returns the
+ * number of pages added. The summary paginates instead of truncating.
+ */
+function appendNotesSummary(
+  doc: PDFDocument,
+  notes: PdfNote[],
+  font: PDFFont,
+  bold: PDFFont,
+  onProgress?: (done: number, total: number) => void,
+): number {
+  if (notes.length === 0) return 0;
+
+  const first = doc.getPage(0);
+  const { width: pageW, height: pageH } = first
+    ? first.getSize()
+    : { width: 595.28, height: 841.89 };
+  const margin = SUMMARY_MARGIN;
+  const contentWidth = Math.max(80, pageW - margin * 2);
+  const docName = notes[0]?.docName || "Document";
+  const sorted = [...notes].sort(
+    (a, b) =>
+      a.page - b.page ||
+      a.createdAt - b.createdAt ||
+      a.title.localeCompare(b.title),
+  );
+
+  let page: PDFPage | null = null;
+  let y = 0;
+  let pagesAdded = 0;
+
+  const drawTextSafe = (
+    text: string,
+    opts: { x: number; y: number; size: number; font: PDFFont; color: ReturnType<typeof rgb> },
+  ) => {
+    try {
+      page?.drawText(text, opts);
+    } catch {
+      // Unsupported glyphs must never fail the summary.
+    }
+  };
+
+  const newSummaryPage = () => {
+    page = doc.addPage([pageW, pageH]);
+    pagesAdded += 1;
+    y = pageH - margin;
+
+    drawTextSafe("Notes Summary", {
+      x: margin,
+      y,
+      size: 18,
+      font: bold,
+      color: rgb(0.11, 0.1, 0.1),
+    });
+    y -= 22;
+    drawTextSafe(safeText(docName), {
+      x: margin,
+      y,
+      size: 10,
+      font,
+      color: rgb(0.35, 0.34, 0.33),
+    });
+    y -= 13;
+    const countLabel = `${sorted.length} note${sorted.length === 1 ? "" : "s"} · exported ${new Date().toLocaleDateString()}`;
+    drawTextSafe(countLabel, {
+      x: margin,
+      y,
+      size: 9,
+      font,
+      color: rgb(0.45, 0.44, 0.43),
+    });
+    y -= 14;
+    try {
+      page?.drawLine({
+        start: { x: margin, y },
+        end: { x: pageW - margin, y },
+        thickness: 0.75,
+        color: rgb(0.75, 0.74, 0.73),
+      });
+    } catch {
+      // Decorative only.
+    }
+    y -= 18;
+  };
+
+  const ensureSpace = (needed: number) => {
+    if (!page || y - needed < margin + SUMMARY_FOOTER_GAP) newSummaryPage();
+  };
+
+  const drawWrapped = (
+    text: string,
+    size: number,
+    useFont: PDFFont,
+    color: ReturnType<typeof rgb>,
+    indent = 0,
+  ) => {
+    const lines = wrapSummaryText(text, useFont, size, contentWidth - indent);
+    for (const line of lines) {
+      ensureSpace(SUMMARY_LINE_HEIGHT);
+      if (line) {
+        drawTextSafe(line, {
+          x: margin + indent,
+          y,
+          size,
+          font: useFont,
+          color,
+        });
+      }
+      y -= SUMMARY_LINE_HEIGHT;
+    }
+  };
+
+  newSummaryPage();
+  sorted.forEach((note, index) => {
+    ensureSpace(64);
+    drawTextSafe(
+      `Page ${note.page} · ${note.kind === "selection" ? "Selection note" : "Page note"}`,
+      {
+        x: margin,
+        y,
+        size: 11,
+        font: bold,
+        color: rgb(0.06, 0.42, 0.74),
+      },
+    );
+    y -= 17;
+
+    const quote = note.selectedText.replace(/\s+/g, " ").trim();
+    drawWrapped(
+      quote ? `Where: “${quote}”` : "Where: page note (no selected text)",
+      9.5,
+      font,
+      rgb(0.38, 0.37, 0.36),
+    );
+    y -= 2;
+    drawWrapped(
+      `Title: ${note.title || "Untitled note"}`,
+      10,
+      bold,
+      rgb(0.11, 0.1, 0.1),
+    );
+    drawWrapped(
+      `Note: ${note.content.trim() || "(no content)"}`,
+      10,
+      font,
+      rgb(0.16, 0.15, 0.14),
+    );
+
+    if (index < sorted.length - 1) {
+      ensureSpace(18);
+      try {
+        page?.drawLine({
+          start: { x: margin, y: y - 2 },
+          end: { x: pageW - margin, y: y - 2 },
+          thickness: 0.5,
+          color: rgb(0.85, 0.84, 0.83),
+        });
+      } catch {
+        // Decorative only.
+      }
+      y -= 18;
+    }
+    onProgress?.(index + 1, sorted.length);
+  });
+
+  return pagesAdded;
+}
+
 /**
  * Burns overlays into a copy of `original` and returns the new PDF bytes.
  * Progress is reported per page so large PDFs show a live indicator.
@@ -530,6 +758,22 @@ export async function exportAnnotatedPdf(
     throw new PdfExportError("Annotations could not be drawn. Please try again.", { cause: raw });
   }
 
+  if (annotations.notes.length > 0) {
+    try {
+      report({ phase: "summary", page: 0, totalPages, ratio: 0.92 });
+      appendNotesSummary(doc, annotations.notes, font, bold, (done, total) => {
+        report({
+          phase: "summary",
+          page: done,
+          totalPages: total,
+          ratio: 0.92 + (done / Math.max(1, total)) * 0.03,
+        });
+      });
+    } catch {
+      // A summary failure must not block the annotated export.
+    }
+  }
+
   try {
     report({ phase: "save", page: totalPages, totalPages, ratio: 0.95 });
     doc.setProducer("Markly PDF");
@@ -538,7 +782,7 @@ export async function exportAnnotatedPdf(
     report({ phase: "save", page: totalPages, totalPages, ratio: 1 });
     return new Uint8Array(bytes);
   } catch (raw) {
-    throw new PdfExportError("The annotated PDF could not be saved. Please try again.", { cause: raw });
+    throw new PdfExportError("The exported PDF could not be saved. Please try again.", { cause: raw });
   }
 }
 

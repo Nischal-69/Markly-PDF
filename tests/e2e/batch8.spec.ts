@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { PDFDocument } from "pdf-lib";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
@@ -27,7 +28,7 @@ test("batch8: Save / Save As / Export buttons are available", async ({ page }) =
 
   await expect(page.getByRole("button", { name: "Save project", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save project as" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Export annotated PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export highlighted PDF" })).toBeVisible();
   // Legacy copy action is preserved (Batch 1).
   await expect(page.getByRole("button", { name: "Save a copy of this PDF" })).toBeVisible();
 });
@@ -54,21 +55,25 @@ test("batch8: Save project downloads .markly.json and toasts", async ({ page }) 
   expect(Array.isArray(project.notes)).toBe(true);
 });
 
-test("batch8: Export annotated PDF downloads -annotated.pdf and reopens", async ({ page }) => {
+test("batch8: Export highlighted PDF downloads -annotated.pdf and reopens", async ({ page }) => {
   await page.goto("/");
   await openPdfViaToolbar(page, FIXTURE);
   await waitForViewer(page);
 
   const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
-  await page.getByRole("button", { name: "Export annotated PDF" }).click();
+  await page.getByRole("button", { name: "Export highlighted PDF" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toContain("-annotated.pdf");
-  await expect(page.getByText(/Exported PDF/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/Exported (highlighted )?PDF/)).toBeVisible({ timeout: 10_000 });
 
   // The export is a real PDF (another reader could open it).
   const filePath = (await download.path()) as string;
-  const head = fs.readFileSync(filePath).subarray(0, 5).toString("utf8");
+  const exportedBytes = fs.readFileSync(filePath);
+  const head = exportedBytes.subarray(0, 5).toString("utf8");
   expect(head).toBe("%PDF-");
+  // No notes → no summary page is appended.
+  const exportedDoc = await PDFDocument.load(exportedBytes);
+  expect(exportedDoc.getPageCount()).toBe(5);
 
   // Round-trip: the exported file opens again in Markly PDF.
   const saved = await download.createReadStream().then(
@@ -96,7 +101,7 @@ test("batch8: Export annotated PDF downloads -annotated.pdf and reopens", async 
   }
 });
 
-test("batch8: export burns every annotation type and reopens", async ({ page }) => {
+test("batch8: export burns highlights and notes and reopens", async ({ page }) => {
   await page.goto("/");
   await openPdfViaToolbar(page, FIXTURE);
   await waitForViewer(page);
@@ -161,10 +166,10 @@ test("batch8: export burns every annotation type and reopens", async ({ page }) 
   await expect(page.locator(".note-pin").first()).toBeVisible({ timeout: 10_000 });
 
   const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
-  await page.getByRole("button", { name: "Export annotated PDF" }).click();
+  await page.getByRole("button", { name: "Export highlighted PDF" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toContain("-annotated.pdf");
-  await expect(page.getByText(/Exported annotated PDF with 9 annotations/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/Exported highlighted PDF with 1 highlight and 1 note/)).toBeVisible({ timeout: 10_000 });
 
   // Burned export is a valid PDF (pdf-lib re-serializes compactly, so it
   // can be smaller than the source and still carry the new content).
@@ -172,6 +177,37 @@ test("batch8: export burns every annotation type and reopens", async ({ page }) 
   const bytes = fs.readFileSync(filePath);
   expect(bytes.subarray(0, 5).toString("utf8")).toBe("%PDF-");
   expect(bytes.length).toBeGreaterThan(1000);
+
+  // One note → one appended summary page.
+  const exportedDoc = await PDFDocument.load(bytes);
+  expect(exportedDoc.getPageCount()).toBe(6);
+
+  // The summary page is real text and lists where + what the user noted.
+  const tmp = path.resolve(HERE, "../fixtures/.tmp-batch8-notes-summary.pdf");
+  fs.writeFileSync(tmp, bytes);
+  try {
+    await page.getByRole("button", { name: "Close document" }).click();
+    await openPdfViaToolbar(page, tmp);
+    await waitForViewer(page);
+    await expect(page.getByText("Page 1 of 6", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    await page.keyboard.press("End");
+    await expect(page.getByText("Page 6 of 6", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.locator(".pdf-page[data-page-number='6'] .pdf-text-layer span").first(),
+    ).toBeAttached({ timeout: 20_000 });
+    const summaryText = await page
+      .locator(".pdf-page[data-page-number='6'] .pdf-text-layer")
+      .innerText();
+    expect(summaryText).toContain("Notes Summary");
+    expect(summaryText).toContain("Export check");
+    expect(summaryText).toContain("Round-trip note body");
+  } finally {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      // best effort
+    }
+  }
 
   // Cleanup seeded overlays for other tests (fresh contexts anyway, belt & braces).
   await page.evaluate(() => {
@@ -187,9 +223,9 @@ test("batch8: large PDF export shows progress", async ({ page }) => {  await pag
   await expect(page.locator(".thumb-item")).toHaveCount(120, { timeout: 30_000 });
 
   const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
-  await page.getByRole("button", { name: "Export annotated PDF" }).click();
+  await page.getByRole("button", { name: "Export highlighted PDF" }).click();
   // Progress indicator for large PDFs (dialog + determinate bar).
-  await expect(page.getByRole("dialog", { name: "Exporting annotated PDF" })).toBeVisible({
+  await expect(page.getByRole("dialog", { name: "Exporting highlighted PDF" })).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByRole("progressbar", { name: "Export progress" })).toBeVisible({

@@ -162,13 +162,15 @@ export function TopToolbar() {
 
         <button
           type="button"
-          className="btn btn-icon"
+          className="btn"
           onClick={handleExport}
           disabled={!inViewer || isExporting || saveBusy || status !== "ready"}
-          title="Export annotated PDF (Ctrl+E)"
-          aria-label="Export annotated PDF"
+          title="Export highlighted PDF (Ctrl+E)"
+          aria-label="Export highlighted PDF"
+          aria-keyshortcuts="Control+e"
         >
           <Icon name="export" size={15} />
+          <span>Export PDF</span>
         </button>
 
         <button

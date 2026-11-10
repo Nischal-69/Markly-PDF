@@ -3,7 +3,7 @@
  *
  * - Save / Save As write a `.markly.json` project file (overlay metadata
  *   only — the original PDF is never touched).
- * - Export PDF burns overlays into a new PDF via pdf-lib.
+ * - Export PDF burns highlights and notes into a new PDF via pdf-lib.
  * - The original PDF is never overwritten unless the user explicitly
  *   confirms it in the overwrite dialog (see fileHandling guards).
  * - Export reports per-page progress so large PDFs show a live indicator;
@@ -195,7 +195,7 @@ export const useSaveStore = create<SaveState>()((set, get) => ({
     try {
       burned = await exportAnnotatedPdf(
         original,
-        { highlights: project.highlights, markups: project.markups, notes: project.notes },
+        { highlights: project.highlights, markups: [], notes: project.notes },
         (p) => {
           set({
             exportPhase: p.phase,
@@ -209,7 +209,7 @@ export const useSaveStore = create<SaveState>()((set, get) => ({
       const message =
         raw instanceof PdfExportError
           ? raw.message
-          : "The annotated PDF could not be created. Please try again.";
+          : "The highlighted PDF could not be created. Please try again.";
       set({ isExporting: false, exportError: message, exportPhase: null });
       pdf.notify(message);
       return "cancelled";
@@ -224,7 +224,7 @@ export const useSaveStore = create<SaveState>()((set, get) => ({
         suggested,
         burned,
         "application/pdf",
-        "Export annotated PDF",
+        "Export highlighted PDF",
         { name: "PDF documents", extensions: ["pdf"] },
         pdf.filePath,
       );
@@ -235,11 +235,19 @@ export const useSaveStore = create<SaveState>()((set, get) => ({
           exportPhase: null,
           lastExportName: path ?? suggested,
         });
-        const n = countAnnotations(project);
+        const highlightCount = project.highlights.length;
+        const noteCount = project.notes.length;
+        const parts: string[] = [];
+        if (highlightCount > 0) {
+          parts.push(`${highlightCount} highlight${highlightCount === 1 ? "" : "s"}`);
+        }
+        if (noteCount > 0) {
+          parts.push(`${noteCount} note${noteCount === 1 ? "" : "s"}`);
+        }
         pdf.notify(
-          n > 0
-            ? `Exported annotated PDF with ${n} annotation${n === 1 ? "" : "s"}.`
-            : "Exported PDF (no annotations yet).",
+          parts.length > 0
+            ? `Exported highlighted PDF with ${parts.join(" and ")}.`
+            : "Exported PDF (no highlights or notes yet).",
         );
       } else if (result === "overwrite-aborted") {
         set({ isExporting: false, exportPhase: null });
@@ -249,7 +257,7 @@ export const useSaveStore = create<SaveState>()((set, get) => ({
       }
       return result;
     } catch {
-      const message = "The annotated PDF could not be written. Please try again.";
+      const message = "The highlighted PDF could not be written. Please try again.";
       set({ isExporting: false, exportError: message, exportPhase: null });
       pdf.notify(message);
       return "cancelled";
