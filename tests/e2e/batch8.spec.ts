@@ -90,8 +90,12 @@ test("batch8: Export highlighted PDF downloads -annotated.pdf and reopens", asyn
   try {
     await page.getByRole("button", { name: "Close document" }).click();
     await openPdfViaToolbar(page, tmp);
-    await expect(page.getByRole("document")).toBeVisible({ timeout: 20_000 });
+    await waitForViewer(page);
     await expect(page.getByText("Page 1 of 5", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    const exportedPageText = await page
+      .locator(".pdf-page[data-page-number='1'] .pdf-text-layer")
+      .innerText();
+    expect(exportedPageText).toContain("marklypdf");
   } finally {
     try {
       fs.unlinkSync(tmp);
@@ -195,6 +199,7 @@ test("batch8: export burns highlights and appends Notes page, then reopens", asy
       .innerText();
     expect(firstPageText).not.toContain("Export check");
     expect(firstPageText).not.toContain("Round-trip note body");
+    expect(firstPageText).toContain("marklypdf");
 
     // The appended page is real text and lists where + what the user noted.
     await page.keyboard.press("End");
@@ -209,6 +214,7 @@ test("batch8: export burns highlights and appends Notes page, then reopens", asy
     expect(notesText).not.toContain("Notes Summary");
     expect(notesText).toContain("Export check");
     expect(notesText).toContain("Round-trip note body");
+    expect(notesText).toContain("marklypdf");
   } finally {
     try {
       fs.unlinkSync(tmp);

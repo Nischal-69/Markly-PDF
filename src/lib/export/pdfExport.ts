@@ -19,7 +19,7 @@
  * pdf.js builds.
  */
 
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { getPage } from "@/lib/pdf/pdfEngine";
 import { HIGHLIGHT_COLORS, type Highlight } from "@/lib/annotations/highlightTypes";
 import type { Markup } from "@/lib/annotations/markupTypes";
@@ -48,6 +48,35 @@ export class PdfExportError extends Error {
 }
 
 const HIGHLIGHT_HEX = new Map(HIGHLIGHT_COLORS.map((c) => [c.id, c.swatch]));
+
+const WATERMARK_TEXT = "marklypdf";
+const WATERMARK_ANGLE = 30;
+
+function drawWatermark(page: PDFPage, font: PDFFont): void {
+  try {
+    const { width, height } = page.getSize();
+    const size = Math.min(96, Math.max(36, Math.min(width, height) * 0.12));
+    const textWidth = font.widthOfTextAtSize(WATERMARK_TEXT, size);
+    const textHeight = font.heightAtSize(size);
+    const radians = (WATERMARK_ANGLE * Math.PI) / 180;
+    const offsetX =
+      (textWidth / 2) * Math.cos(radians) - (textHeight / 2) * Math.sin(radians);
+    const offsetY =
+      (textWidth / 2) * Math.sin(radians) + (textHeight / 2) * Math.cos(radians);
+
+    page.drawText(WATERMARK_TEXT, {
+      x: width / 2 - offsetX,
+      y: height / 2 - offsetY,
+      size,
+      font,
+      color: rgb(0.35, 0.34, 0.33),
+      opacity: 0.1,
+      rotate: degrees(WATERMARK_ANGLE),
+    });
+  } catch {
+    // Watermark is decorative; never fail the export.
+  }
+}
 
 function hexToRgbTuple(hex: string): [number, number, number] {
   const m = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
@@ -673,6 +702,12 @@ export async function exportAnnotatedPdf(
     } catch {
       // A summary failure must not block the annotated export.
     }
+  }
+
+  try {
+    for (const page of doc.getPages()) drawWatermark(page, bold);
+  } catch {
+    // Watermark is decorative; never fail the export.
   }
 
   try {
