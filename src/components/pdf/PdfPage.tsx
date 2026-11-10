@@ -98,6 +98,7 @@ export const PdfPage = memo(function PdfPage({
     let cancelled = false;
     let task: RenderTask | null = null;
     let page: PDFPageProxy | null = null;
+    const textLayerAbort = new AbortController();
 
     setRenderError(false);
 
@@ -112,7 +113,12 @@ export const PdfPage = memo(function PdfPage({
         task = renderTask;
         await renderTask.promise;
         if (cancelled) return;
-        await buildTextLayer(pageNumber, viewport, textLayer);
+        await buildTextLayer(
+          pageNumber,
+          viewport,
+          textLayer,
+          textLayerAbort.signal,
+        );
         if (cancelled) return;
         page.cleanup();
       } catch (err) {
@@ -129,6 +135,7 @@ export const PdfPage = memo(function PdfPage({
 
     return () => {
       cancelled = true;
+      textLayerAbort.abort();
       try {
         task?.cancel();
       } catch {

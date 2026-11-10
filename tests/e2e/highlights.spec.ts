@@ -46,8 +46,9 @@ async function spanRectByText(
       );
       const el = matches[occ];
       // Drag targets may sit below the fold — bring them into view first
-      // so synthetic mouse events land on real text.
-      el?.scrollIntoView({ block: "center" });
+      // so synthetic mouse events land on real text. "nearest" avoids
+      // shifting an already-visible target and invalidating other rects.
+      el?.scrollIntoView({ block: "nearest" });
       const r = el?.getBoundingClientRect();
       return r
         ? { x: r.x, y: r.y, width: r.width, height: r.height }

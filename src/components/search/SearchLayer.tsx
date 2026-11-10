@@ -144,7 +144,12 @@ export const SearchLayer = memo(function SearchLayer({
     const textLayer = pageEl?.querySelector(":scope .pdf-text-layer");
     if (textLayer) {
       observer = new MutationObserver(schedule);
-      observer.observe(textLayer, { childList: true, subtree: true });
+      observer.observe(textLayer, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-div-index"],
+      });
     }
 
     return () => {
