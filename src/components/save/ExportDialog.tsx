@@ -24,7 +24,7 @@ export function ExportDialog() {
   const pct = Math.round(Math.min(1, Math.max(0, ratio)) * 100);
   const phaseLabel =
     phase === "load" ? "Reading PDF…"
-    : phase === "summary" ? "Adding notes summary…"
+    : phase === "summary" ? "Adding notes…"
     : phase === "save" ? "Writing file…"
     : total > 0
       ? `Exporting page ${Math.max(1, page)} of ${total}…`

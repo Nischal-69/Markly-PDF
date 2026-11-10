@@ -3,9 +3,10 @@
  *
  * Burns Markly overlays into a copy of the original PDF bytes using
  * pdf-lib, so the result opens in Markly AND any other PDF reader.
- * The app currently exports highlights and notes; the engine also
- * supports underline/strikethrough, drawings, shapes and text
- * annotations for future export scopes.
+ * The app currently exports highlights and markups onto their original
+ * pages, then appends a "Notes" page listing every note. The engine also
+ * supports underline/strikethrough, drawings, shapes and text annotations
+ * for future export scopes.
  *
  * The original file is never mutated: callers pass the loaded bytes and
  * receive brand-new bytes to write to a user-chosen location.
@@ -240,84 +241,6 @@ function drawArrow(
   page.drawLine({ start: w1, end: w2, thickness: Math.max(0.5, thickness * 0.7), color, opacity: 1 });
 }
 
-function drawWrappedNote(
-  page: PDFPage,
-  map: PageMapping,
-  font: PDFFont,
-  bold: PDFFont,
-  anchorView: { x: number; y: number },
-  title: string,
-  body: string,
-  accentHex: string,
-  isPageNote: boolean,
-): void {
-  // Page-corner notes live at (0,0) in viewport space — export them as a
-  // top-right callout so they never cover content in other readers.
-  const view = isPageNote ? { x: map.viewportWidth - 190, y: 12 } : anchorView;
-  const anchor = map.toPdf(view.x, view.y);
-  const boxW = 170;
-  const titleLines = wrapLines(safeText(title) || "Note", 32);
-  const bodyLines = wrapLines(safeText(body), 38).slice(0, 12);
-  const lineH = 10;
-  const boxH = 18 + (titleLines.length + bodyLines.length) * lineH + 10;
-  // Clamp inside the page.
-  let boxX = Math.min(Math.max(anchor.x + 8, 8), Math.max(8, map.pdfWidth - boxW - 8));
-  let boxY = Math.min(Math.max(anchor.y - boxH - 6, 8), Math.max(8, map.pdfHeight - boxH - 8));
-  if (![boxX, boxY].every(Number.isFinite)) return;
-
-  // Pin marker at the anchor.
-  const pinR = map.toPdfRect(view.x - 1, view.y - 1, 12, 12);
-  page.drawRectangle({
-    x: pinR.x,
-    y: pinR.y,
-    width: Math.max(8, pinR.width),
-    height: Math.max(8, pinR.height),
-    color: pdfColor(accentHex),
-    borderColor: pdfColor("#1B1A19"),
-    borderWidth: 0.75,
-    opacity: 1,
-  });
-
-  page.drawRectangle({
-    x: boxX,
-    y: boxY,
-    width: boxW,
-    height: boxH,
-    color: rgb(1, 0.988, 0.78),
-    borderColor: pdfColor(accentHex),
-    borderWidth: 1,
-    opacity: 1,
-  });
-  // Accent bar like the on-screen card.
-  page.drawRectangle({
-    x: boxX,
-    y: boxY,
-    width: 4,
-    height: boxH,
-    color: pdfColor(accentHex),
-    borderWidth: 0,
-    opacity: 1,
-  });
-
-  let cursorY = boxY + boxH - 14;
-  for (const line of titleLines) {
-    try {
-      page.drawText(line, { x: boxX + 10, y: cursorY, size: 8.5, font: bold, color: rgb(0.11, 0.1, 0.1) });
-    } catch {
-      // Unsupported glyphs must never fail the whole export.
-    }
-    cursorY -= lineH;
-  }
-  for (const line of bodyLines) {
-    try {
-      page.drawText(line, { x: boxX + 10, y: cursorY, size: 7.5, font, color: rgb(0.25, 0.24, 0.23) });
-    } catch {
-      // Skip undecodable lines.
-    }
-    cursorY -= lineH;
-  }
-}
-
 const SUMMARY_MARGIN = 48;
 const SUMMARY_LINE_HEIGHT = 14;
 const SUMMARY_FOOTER_GAP = 28;
@@ -376,9 +299,9 @@ function wrapSummaryText(
 }
 
 /**
- * Appends one or more "Notes Summary" pages listing every note, the page
- * and selected text it belongs to, and the full note content. Returns the
- * number of pages added. The summary paginates instead of truncating.
+ * Appends one or more "Notes" pages listing every note, the page and
+ * selected text it belongs to, and the full note content. Returns the
+ * number of pages added. The notes list paginates instead of truncating.
  */
 function appendNotesSummary(
   doc: PDFDocument,
@@ -423,7 +346,7 @@ function appendNotesSummary(
     pagesAdded += 1;
     y = pageH - margin;
 
-    drawTextSafe("Notes Summary", {
+    drawTextSafe("Notes", {
       x: margin,
       y,
       size: 18,
@@ -589,11 +512,11 @@ export async function exportAnnotatedPdf(
   const totalPages = pages.length;
   if (totalPages < 1) throw new PdfExportError("This PDF has no pages to export.");
 
-  const byPage = new Map<number, { highlights: Highlight[]; markups: Markup[]; notes: PdfNote[] }>();
+  const byPage = new Map<number, { highlights: Highlight[]; markups: Markup[] }>();
   const ensure = (page: number) => {
     let e = byPage.get(page);
     if (!e) {
-      e = { highlights: [], markups: [], notes: [] };
+      e = { highlights: [], markups: [] };
       byPage.set(page, e);
     }
     return e;
@@ -604,16 +527,13 @@ export async function exportAnnotatedPdf(
   for (const m of annotations.markups) {
     if (m.page >= 1 && m.page <= totalPages) ensure(m.page).markups.push(m);
   }
-  for (const n of annotations.notes) {
-    if (n.page >= 1 && n.page <= totalPages) ensure(n.page).notes.push(n);
-  }
 
   try {
     for (let i = 0; i < pages.length; i += 1) {
       const pageNum = i + 1;
       const pdfPage = pages[i];
       const entry = byPage.get(pageNum);
-      if (entry && (entry.highlights.length + entry.markups.length + entry.notes.length > 0)) {
+      if (entry && (entry.highlights.length + entry.markups.length > 0)) {
         // Viewport at scale 1 for this page (handles zoom-free mapping).
         let viewport: unknown = null;
         let pdfJsPage: { getViewport: (o: { scale: number }) => unknown; cleanup: () => void } | null = null;
@@ -717,25 +637,6 @@ export async function exportAnnotatedPdf(
               }
             } catch {
               // One bad markup must not fail the export.
-            }
-          }
-
-          for (const n of entry.notes) {
-            try {
-              const isPageNote = n.kind === "page" && n.x === 0 && n.y === 0;
-              drawWrappedNote(
-                pdfPage,
-                map,
-                font,
-                bold,
-                { x: n.x, y: n.y },
-                n.title,
-                n.content || n.selectedText,
-                "#0F6CBD",
-                isPageNote,
-              );
-            } catch {
-              // Skip undecodable notes.
             }
           }
         } finally {

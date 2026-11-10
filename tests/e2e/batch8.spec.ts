@@ -71,7 +71,7 @@ test("batch8: Export highlighted PDF downloads -annotated.pdf and reopens", asyn
   const exportedBytes = fs.readFileSync(filePath);
   const head = exportedBytes.subarray(0, 5).toString("utf8");
   expect(head).toBe("%PDF-");
-  // No notes → no summary page is appended.
+  // No notes → no Notes page is appended.
   const exportedDoc = await PDFDocument.load(exportedBytes);
   expect(exportedDoc.getPageCount()).toBe(5);
 
@@ -101,7 +101,7 @@ test("batch8: Export highlighted PDF downloads -annotated.pdf and reopens", asyn
   }
 });
 
-test("batch8: export burns highlights and notes and reopens", async ({ page }) => {
+test("batch8: export burns highlights and appends Notes page, then reopens", async ({ page }) => {
   await page.goto("/");
   await openPdfViaToolbar(page, FIXTURE);
   await waitForViewer(page);
@@ -178,29 +178,37 @@ test("batch8: export burns highlights and notes and reopens", async ({ page }) =
   expect(bytes.subarray(0, 5).toString("utf8")).toBe("%PDF-");
   expect(bytes.length).toBeGreaterThan(1000);
 
-  // One note → one appended summary page.
+  // One note → one appended Notes page.
   const exportedDoc = await PDFDocument.load(bytes);
   expect(exportedDoc.getPageCount()).toBe(6);
 
-  // The summary page is real text and lists where + what the user noted.
-  const tmp = path.resolve(HERE, "../fixtures/.tmp-batch8-notes-summary.pdf");
+  // Notes are no longer burned into the original pages.
+  const tmp = path.resolve(HERE, "../fixtures/.tmp-batch8-notes-page.pdf");
   fs.writeFileSync(tmp, bytes);
   try {
     await page.getByRole("button", { name: "Close document" }).click();
     await openPdfViaToolbar(page, tmp);
     await waitForViewer(page);
     await expect(page.getByText("Page 1 of 6", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+    const firstPageText = await page
+      .locator(".pdf-page[data-page-number='1'] .pdf-text-layer")
+      .innerText();
+    expect(firstPageText).not.toContain("Export check");
+    expect(firstPageText).not.toContain("Round-trip note body");
+
+    // The appended page is real text and lists where + what the user noted.
     await page.keyboard.press("End");
     await expect(page.getByText("Page 6 of 6", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
     await expect(
       page.locator(".pdf-page[data-page-number='6'] .pdf-text-layer span").first(),
     ).toBeAttached({ timeout: 20_000 });
-    const summaryText = await page
+    const notesText = await page
       .locator(".pdf-page[data-page-number='6'] .pdf-text-layer")
       .innerText();
-    expect(summaryText).toContain("Notes Summary");
-    expect(summaryText).toContain("Export check");
-    expect(summaryText).toContain("Round-trip note body");
+    expect(notesText).toContain("Notes");
+    expect(notesText).not.toContain("Notes Summary");
+    expect(notesText).toContain("Export check");
+    expect(notesText).toContain("Round-trip note body");
   } finally {
     try {
       fs.unlinkSync(tmp);
